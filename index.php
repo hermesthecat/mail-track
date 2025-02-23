@@ -10,6 +10,35 @@ $db_name = 'mail_tracker';
 $db_user = 'root';
 $db_pass = '';
 
+// Telegram Bot Ayarları
+define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE'); // Telegram bot token'ınızı buraya yazın
+define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE'); // Bildirim alacağınız chat ID'yi buraya yazın
+
+// Telegram'a mesaj gönderme fonksiyonu
+function sendTelegramMessage($message) {
+    $url = "https://api.telegram.org/bot" . TELEGRAM_BOT_TOKEN . "/sendMessage";
+    $data = [
+        'chat_id' => TELEGRAM_CHAT_ID,
+        'text' => $message,
+        'parse_mode' => 'HTML'
+    ];
+
+    $options = [
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content' => http_build_query($data)
+        ]
+    ];
+
+    $context = stream_context_create($options);
+    $result = @file_get_contents($url, false, $context);
+    
+    if ($result === FALSE) {
+        error_log("Telegram bildirimi gönderilemedi");
+    }
+}
+
 try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -33,6 +62,16 @@ if (isset($_GET['track'])) {
     try {
         $stmt = $pdo->prepare("INSERT INTO email_logs (tracking_id, ip_address, user_agent, opened_at) VALUES (?, ?, ?, ?)");
         $stmt->execute([$tracking_id, $ip_address, $user_agent, $timestamp]);
+
+        // Telegram bildirimi gönder
+        $message = "📧 <b>Yeni E-posta Açılması!</b>\n\n" .
+                  "🔍 Tracking ID: <code>" . htmlspecialchars($tracking_id) . "</code>\n" .
+                  "🌐 IP Adresi: <code>" . htmlspecialchars($ip_address) . "</code>\n" .
+                  "🔎 Tarayıcı: " . htmlspecialchars($user_agent) . "\n" .
+                  "⏰ Zaman: " . htmlspecialchars($timestamp);
+        
+        sendTelegramMessage($message);
+        
     } catch(PDOException $e) {
         error_log("Log kayıt hatası: " . $e->getMessage());
     }
