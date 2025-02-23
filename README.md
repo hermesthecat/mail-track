@@ -4,25 +4,55 @@ E-posta takip sistemi - Mail açılma bildirimlerini anlık olarak takip edin.
 
 **Geliştirici:** A. Kerem Gök
 
+## 📌 İçindekiler
+
+- [Özellikler](#-özellikler)
+- [Gereksinimler](#-gereksinimler)
+- [Kurulum](#️-kurulum)
+- [Kullanım](#-kullanım)
+- [Güvenlik](#-güvenlik-notları)
+- [Özellik Detayları](#-özellik-detayları)
+- [SSS](#-sık-sorulan-sorular)
+- [Katkıda Bulunma](#-katkıda-bulunma)
+- [Lisans](#-lisans)
+
 ## 🚀 Özellikler
 
-- E-posta açılma takibi
-- Anlık Telegram bildirimleri
-- Modern web arayüzü
-- Detaylı istatistikler
-- IP ve tarayıcı bilgisi takibi
-- Kolay entegrasyon
+- ✉️ E-posta açılma takibi
+- 🔔 Anlık Telegram bildirimleri
+- 🎨 Modern ve responsive web arayüzü
+- 📊 Detaylı istatistikler ve raporlama
+- 🔍 IP ve tarayıcı bilgisi takibi
+- 🔐 Güvenli giriş sistemi
+- 📱 Mobil uyumlu tasarım
+- 🔄 Kolay entegrasyon
+- 📈 Gerçek zamanlı istatistikler
 
 ## 📋 Gereksinimler
 
-- PHP 7.4 veya üzeri
-- MySQL/MariaDB
-- Web sunucusu (Apache/Nginx)
-- Telegram Bot API erişimi
+- 🔧 PHP 7.4 veya üzeri
+- 📦 MySQL/MariaDB
+- 🌐 Web sunucusu (Apache/Nginx)
+- 🤖 Telegram Bot API erişimi
+- 📨 SMTP sunucusu (opsiyonel)
 
 ## ⚙️ Kurulum
 
-### 1. Veritabanı Kurulumu
+### 1. Dosyaları Yükleme
+
+```bash
+# Projeyi klonlayın
+git clone https://github.com/kullaniciadi/mail-tracker.git
+
+# Proje dizinine girin
+cd mail-tracker
+
+# Gerekli izinleri ayarlayın
+chmod 755 .
+chmod 644 *.php
+```
+
+### 2. Veritabanı Kurulumu
 
 1. MySQL/MariaDB veritabanınıza bağlanın
 2. `setup.sql` dosyasını çalıştırın:
@@ -30,7 +60,7 @@ E-posta takip sistemi - Mail açılma bildirimlerini anlık olarak takip edin.
 source setup.sql
 ```
 
-### 2. Veritabanı Bağlantı Ayarları
+### 3. Veritabanı Bağlantı Ayarları
 
 `index.php` dosyasındaki veritabanı bağlantı bilgilerini güncelleyin:
 
@@ -41,75 +71,132 @@ $db_user = 'root';     // Veritabanı kullanıcı adınız
 $db_pass = '';         // Veritabanı şifreniz
 ```
 
-### 3. Telegram Bot Kurulumu
+### 4. Telegram Bot Kurulumu
 
-1. Telegram'da @BotFather ile yeni bir bot oluşturun:
-   - Telegram'ı açın ve @BotFather ile sohbet başlatın
+1. **Bot Oluşturma:**
+   - Telegram'da [@BotFather](https://t.me/botfather) ile sohbet başlatın
    - `/newbot` komutunu gönderin
    - Bot için bir isim belirleyin (örn: "Mail Tracker Bot")
    - Bot için bir kullanıcı adı belirleyin (örn: "mail_tracker_bot")
-   - BotFather size bir TOKEN verecek, bu token'ı kaydedin
+   - Size verilen TOKEN'ı kaydedin
 
-2. Chat ID'nizi alın:
-   - Oluşturduğunuz bot ile özel mesaj başlatın
+2. **Chat ID Alma:**
+   - Oluşturduğunuz bot ile özel mesaj başlatın ("/start")
    - Bota herhangi bir mesaj gönderin
-   - Tarayıcınızdan şu adresi ziyaret edin:
+   - Şu URL'i ziyaret edin:
      ```
      https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
      ```
-   - Çıkan JSON yanıtında `chat` > `id` değerini bulun
+   - JSON yanıtında `chat` > `id` değerini bulun
 
-3. Bot bilgilerini `index.php` dosyasına ekleyin:
-```php
-define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE');
-define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE');
+3. **Bot Ayarlarını Yapılandırma:**
+   - `index.php` dosyasını açın
+   - Bot bilgilerini ekleyin:
+     ```php
+     define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE');
+     define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE');
+     ```
+
+### 5. Giriş Bilgileri
+
+**Varsayılan Hesap:**
+- 👤 Kullanıcı adı: `admin`
+- 🔑 Şifre: `admin123`
+
+**Şifre Değiştirme:**
+1. Veritabanına bağlanın
+2. Aşağıdaki SQL komutunu çalıştırın:
+```sql
+-- Yeni şifre için güvenli hash oluşturma
+UPDATE admins 
+SET password = '$2y$10$' || SHA2('YeniŞifreniz', 256) 
+WHERE username = 'admin';
 ```
 
 ## 📝 Kullanım
 
-### Tracking URL Oluşturma
+### 1. Sisteme Giriş
 
 1. Web arayüzünü açın
-2. "Tracking URL Oluşturucu" bölümünden yeni bir URL alın
-3. Bu URL'i e-postanıza resim olarak ekleyin:
+2. Kullanıcı adı ve şifrenizle giriş yapın
+3. Giriş yaptıktan sonra dashboard'a yönlendirileceksiniz
+
+### 2. Tracking URL Oluşturma
+
+1. Dashboard'da "Tracking URL Oluşturucu" bölümüne gidin
+2. "Yeni URL Oluştur" butonuna tıklayın
+3. Oluşturulan URL'i e-postanıza ekleyin:
+
 ```html
-<img src="http://sizinsiteniz.com/index.php?track=TRACKING_ID" width="1" height="1" />
+<!-- Görünmez tracking pixel -->
+<img src="http://sizinsiteniz.com/index.php?track=TRACKING_ID" 
+     width="1" 
+     height="1" 
+     style="display:none">
+
+<!-- veya -->
+
+<!-- Görünür logo/imza olarak -->
+<img src="http://sizinsiteniz.com/index.php?track=TRACKING_ID" 
+     width="150" 
+     alt="Logo">
 ```
 
-### Bildirimleri Takip Etme
+### 3. Bildirimleri Takip Etme
 
-- E-posta açıldığında Telegram'dan anlık bildirim alacaksınız
-- Web arayüzünden tüm açılma kayıtlarını görebilirsiniz
-- İstatistik kartlarından özet bilgileri takip edebilirsiniz
+- 📱 Telegram'dan anlık bildirimler
+- 📊 Web arayüzünden detaylı istatistikler
+- 📈 Günlük/haftalık/aylık raporlar
+- 🔍 Detaylı açılma bilgileri
 
 ## 🔒 Güvenlik Notları
 
-1. Veritabanı bilgilerinizi güvenli bir şekilde saklayın
-2. Telegram bot token'ınızı gizli tutun
-3. Production ortamında tüm hassas bilgileri ayrı bir config dosyasında tutun
-4. IP adresi toplama konusunda KVKK gereksinimlerini göz önünde bulundurun
+1. **Veritabanı Güvenliği:**
+   - Güçlü şifreler kullanın
+   - Düzenli yedek alın
+   - Gereksiz yetkileri kaldırın
 
-## 📊 Özellik Detayları
+2. **API Güvenliği:**
+   - Telegram token'ını gizli tutun
+   - Rate limiting uygulayın
+   - IP kısıtlaması ekleyin
 
-- **Anlık Bildirimler:** E-posta açıldığında şu bilgilerle anında Telegram bildirimi:
-  - Tracking ID
-  - IP Adresi
-  - Tarayıcı bilgisi
-  - Açılma zamanı
+3. **Genel Güvenlik:**
+   - SSL/TLS kullanın
+   - Güvenlik duvarı kurun
+   - Düzenli güncelleme yapın
 
-- **İstatistikler:**
-  - Toplam açılma sayısı
-  - Benzersiz IP sayısı
-  - Günlük açılma sayısı
+## 💡 Sık Sorulan Sorular
+
+1. **Mail açılma bildirimi almıyorum?**
+   - Telegram bot ayarlarını kontrol edin
+   - Internet bağlantınızı kontrol edin
+   - Log dosyalarını inceleyin
+
+2. **Tracking çalışmıyor?**
+   - URL'in doğru olduğundan emin olun
+   - E-posta istemcisinin resimleri gösterdiğinden emin olun
+   - Sunucu erişimini kontrol edin
+
+3. **Giriş yapamıyorum?**
+   - Veritabanı bağlantısını kontrol edin
+   - Şifrenizi sıfırlayın
+   - Hata loglarını inceleyin
 
 ## 🤝 Katkıda Bulunma
 
 1. Bu depoyu fork edin
-2. Yeni bir branch oluşturun (`git checkout -b yeni-ozellik`)
-3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik eklendi'`)
+2. Feature branch oluşturun (`git checkout -b yeni-ozellik`)
+3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik: XYZ'`)
 4. Branch'inizi push edin (`git push origin yeni-ozellik`)
 5. Pull Request oluşturun
 
 ## 📜 Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına bakın. 
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın.
+
+## 📞 İletişim
+
+- 📧 E-posta: [eposta@adresiniz.com](mailto:eposta@adresiniz.com)
+- 🌐 Website: [www.siteniz.com](https://www.siteniz.com)
+- 💬 Telegram: [@kullaniciadiniz](https://t.me/kullaniciadiniz) 
