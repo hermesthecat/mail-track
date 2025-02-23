@@ -17,6 +17,17 @@ $db_pass = '';
 define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE'); // Telegram bot token'ınızı buraya yazın
 define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE'); // Bildirim alacağınız chat ID'yi buraya yazın
 
+// IP2Location veya MaxMind GeoIP için API anahtarı
+define('GEOIP_API_KEY', 'YOUR_GEOIP_API_KEY');
+
+// Yardımcı fonksiyonlar
+function getGeoLocation($ip) {
+    // IP2Location veya başka bir servis kullanarak konum bilgisi alınabilir
+    $url = "http://api.ipapi.com/" . $ip . "?access_key=" . GEOIP_API_KEY;
+    $response = @file_get_contents($url);
+    return json_decode($response, true);
+}
+
 // Telegram'a mesaj gönderme fonksiyonu
 function sendTelegramMessage($message)
 {
@@ -51,19 +62,42 @@ try {
     error_log("Veritabanı bağlantı hatası: " . $e->getMessage());
 }
 
+// Yetki kontrolü
+function checkPermission($required_role = 'viewer') {
+    if (!isset($_SESSION['user_id'])) return false;
+    
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT role FROM admins WHERE id = ? AND is_active = 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if (!$user) return false;
+        
+        $roles = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
+        return $roles[$user['role']] >= $roles[$required_role];
+    } catch(PDOException $e) {
+        return false;
+    }
+}
+
 // Login işlemi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
 
     try {
-        $stmt = $pdo->prepare("SELECT * FROM admins WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT * FROM admins WHERE username = ? AND is_active = 1");
         $stmt->execute([$username]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            
+            // Son giriş zamanını güncelle
+            $pdo->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?")->execute([$user['id']]);
         } else {
             $login_error = "Geçersiz kullanıcı adı veya şifre!";
         }
@@ -93,8 +127,34 @@ if (isset($_GET['track'])) {
     $timestamp = date('Y-m-d H:i:s');
 
     try {
+        // Log kaydı oluştur
         $stmt = $pdo->prepare("INSERT INTO email_logs (tracking_id, ip_address, user_agent, opened_at) VALUES (?, ?, ?, ?)");
         $stmt->execute([$tracking_id, $ip_address, $user_agent, $timestamp]);
+        $log_id = $pdo->lastInsertId();
+
+        // Kampanya istatistiklerini güncelle
+        $pdo->prepare("
+            UPDATE campaigns 
+            SET total_opened = total_opened + 1 
+            WHERE tracking_prefix = ? AND NOW() BETWEEN start_date AND COALESCE(end_date, NOW())
+        ")->execute([substr($tracking_id, 0, 8)]);
+
+        // Coğrafi konum bilgisini al ve kaydet
+        $geo_data = getGeoLocation($ip_address);
+        if ($geo_data) {
+            $stmt = $pdo->prepare("
+                INSERT INTO geo_locations (log_id, country, city, region, latitude, longitude) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $log_id,
+                $geo_data['country_name'] ?? null,
+                $geo_data['city'] ?? null,
+                $geo_data['region_name'] ?? null,
+                $geo_data['latitude'] ?? null,
+                $geo_data['longitude'] ?? null
+            ]);
+        }
 
         // Telegram bildirimi gönder
         $message = "📧 <b>Yeni E-posta Açılması!</b>\n\n" .
@@ -103,11 +163,49 @@ if (isset($_GET['track'])) {
             "🔎 Tarayıcı: " . htmlspecialchars($user_agent) . "\n" .
             "⏰ Zaman: " . htmlspecialchars($timestamp);
 
+        if ($geo_data) {
+            $message .= "\n📍 Konum: " . ($geo_data['city'] ?? '') . 
+                       ", " . ($geo_data['country_name'] ?? '');
+        }
+        
         sendTelegramMessage($message);
     } catch (PDOException $e) {
         error_log("Log kayıt hatası: " . $e->getMessage());
     }
 
+    exit;
+}
+
+// API endpoint'leri
+if (isset($_GET['api'])) {
+    header('Content-Type: application/json');
+    
+    if (!checkPermission('editor')) {
+        echo json_encode(['error' => 'Yetkisiz erişim']);
+        exit;
+    }
+    
+    switch ($_GET['api']) {
+        case 'templates':
+            $stmt = $pdo->query("SELECT * FROM email_templates ORDER BY created_at DESC");
+            echo json_encode($stmt->fetchAll());
+            break;
+            
+        case 'campaigns':
+            $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
+            echo json_encode($stmt->fetchAll());
+            break;
+            
+        case 'stats':
+            $stats = [
+                'total_opens' => $pdo->query("SELECT COUNT(*) FROM email_logs")->fetchColumn(),
+                'unique_ips' => $pdo->query("SELECT COUNT(DISTINCT ip_address) FROM email_logs")->fetchColumn(),
+                'today_opens' => $pdo->query("SELECT COUNT(*) FROM email_logs WHERE DATE(opened_at) = CURDATE()")->fetchColumn(),
+                'countries' => $pdo->query("SELECT country, COUNT(*) as count FROM geo_locations GROUP BY country ORDER BY count DESC LIMIT 5")->fetchAll()
+            ];
+            echo json_encode($stats);
+            break;
+    }
     exit;
 }
 
@@ -192,6 +290,7 @@ if (!isset($_SESSION['user_id'])) {
     <title>Mail Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         :root {
             --primary-color: #2563eb;
@@ -304,6 +403,36 @@ if (!isset($_SESSION['user_id'])) {
             background: rgba(255, 255, 255, 0.1);
             color: white;
         }
+
+        #map {
+            height: 400px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .template-card {
+            cursor: pointer;
+        }
+        
+        .campaign-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .campaign-active {
+            background-color: #10b981;
+        }
+        
+        .campaign-ended {
+            background-color: #ef4444;
+        }
+        
+        .campaign-scheduled {
+            background-color: #f59e0b;
+        }
     </style>
 </head>
 
@@ -312,7 +441,10 @@ if (!isset($_SESSION['user_id'])) {
         <div class="container">
             <a class="navbar-brand" href="#"><i class="bi bi-envelope-check me-2"></i>Mail Tracker</a>
             <div class="user-info">
-                <span class="me-2">Hoş geldiniz, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                <span class="me-2">
+                    Hoş geldiniz, <?php echo htmlspecialchars($_SESSION['username']); ?>
+                    (<?php echo ucfirst($_SESSION['role']); ?>)
+                </span>
                 <a href="?logout=1" class="logout-btn">
                     <i class="bi bi-box-arrow-right me-1"></i>Çıkış Yap
                 </a>
@@ -328,29 +460,100 @@ if (!isset($_SESSION['user_id'])) {
                 $total_opens = $pdo->query("SELECT COUNT(*) FROM email_logs")->fetchColumn();
                 $unique_ips = $pdo->query("SELECT COUNT(DISTINCT ip_address) FROM email_logs")->fetchColumn();
                 $today_opens = $pdo->query("SELECT COUNT(*) FROM email_logs WHERE DATE(opened_at) = CURDATE()")->fetchColumn();
-            } catch (PDOException $e) {
-                $total_opens = $unique_ips = $today_opens = 0;
+                $active_campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns WHERE NOW() BETWEEN start_date AND COALESCE(end_date, NOW())")->fetchColumn();
+            } catch(PDOException $e) {
+                $total_opens = $unique_ips = $today_opens = $active_campaigns = 0;
             }
             ?>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card stats-card">
                     <div class="stats-number"><?php echo number_format($total_opens); ?></div>
                     <div class="stats-label">Toplam Açılma</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card stats-card">
                     <div class="stats-number"><?php echo number_format($unique_ips); ?></div>
                     <div class="stats-label">Benzersiz IP</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card stats-card">
                     <div class="stats-number"><?php echo number_format($today_opens); ?></div>
                     <div class="stats-label">Bugünkü Açılma</div>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="stats-number"><?php echo number_format($active_campaigns); ?></div>
+                    <div class="stats-label">Aktif Kampanya</div>
+                </div>
+            </div>
         </div>
+
+        <?php if (checkPermission('editor')): ?>
+        <!-- Şablonlar ve Kampanyalar -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-file-earmark-text me-2"></i>E-posta Şablonları
+                        </h5>
+                        <div class="list-group">
+                            <?php
+                            $stmt = $pdo->query("SELECT * FROM email_templates WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
+                            while ($template = $stmt->fetch()) {
+                                echo '<a href="#" class="list-group-item list-group-item-action template-card">';
+                                echo '<div class="d-flex w-100 justify-content-between">';
+                                echo '<h6 class="mb-1">' . htmlspecialchars($template['name']) . '</h6>';
+                                echo '<small class="text-muted">' . htmlspecialchars($template['category']) . '</small>';
+                                echo '</div>';
+                                echo '<small class="text-muted">' . htmlspecialchars($template['description']) . '</small>';
+                                echo '</a>';
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-graph-up me-2"></i>Kampanyalar
+                        </h5>
+                        <div class="list-group">
+                            <?php
+                            $stmt = $pdo->query("
+                                SELECT *, 
+                                    CASE 
+                                        WHEN NOW() < start_date THEN 'scheduled'
+                                        WHEN NOW() BETWEEN start_date AND COALESCE(end_date, NOW()) THEN 'active'
+                                        ELSE 'ended'
+                                    END as status
+                                FROM campaigns 
+                                ORDER BY created_at DESC 
+                                LIMIT 5
+                            ");
+                            while ($campaign = $stmt->fetch()) {
+                                echo '<div class="list-group-item">';
+                                echo '<div class="d-flex w-100 justify-content-between">';
+                                echo '<h6 class="mb-1">';
+                                echo '<span class="campaign-status campaign-' . $campaign['status'] . '"></span>';
+                                echo htmlspecialchars($campaign['name']) . '</h6>';
+                                echo '<small class="text-muted">' . $campaign['total_opened'] . ' / ' . $campaign['total_sent'] . '</small>';
+                                echo '</div>';
+                                echo '<small class="text-muted">' . htmlspecialchars($campaign['description']) . '</small>';
+                                echo '</div>';
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Tracking URL Kartı -->
         <div class="card tracking-url-card mb-4">
@@ -371,6 +574,16 @@ if (!isset($_SESSION['user_id'])) {
             </div>
         </div>
 
+        <!-- Harita -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="bi bi-geo-alt me-2"></i>Coğrafi Dağılım
+                </h5>
+                <div id="map"></div>
+            </div>
+        </div>
+
         <!-- Log Tablosu -->
         <div class="card">
             <div class="card-body">
@@ -383,6 +596,7 @@ if (!isset($_SESSION['user_id'])) {
                             <tr>
                                 <th>Tracking ID</th>
                                 <th>IP Adresi</th>
+                                <th>Konum</th>
                                 <th>Tarayıcı</th>
                                 <th>Açılma Zamanı</th>
                             </tr>
@@ -390,17 +604,24 @@ if (!isset($_SESSION['user_id'])) {
                         <tbody>
                             <?php
                             try {
-                                $stmt = $pdo->query("SELECT * FROM email_logs ORDER BY opened_at DESC LIMIT 50");
-                                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                $stmt = $pdo->query("
+                                    SELECT l.*, g.country, g.city 
+                                    FROM email_logs l 
+                                    LEFT JOIN geo_locations g ON l.id = g.log_id 
+                                    ORDER BY l.opened_at DESC 
+                                    LIMIT 50
+                                ");
+                                while ($row = $stmt->fetch()) {
                                     echo "<tr>";
                                     echo "<td><span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span></td>";
                                     echo "<td>" . htmlspecialchars($row['ip_address']) . "</td>";
+                                    echo "<td>" . ($row['city'] ? htmlspecialchars($row['city'] . ', ' . $row['country']) : '-') . "</td>";
                                     echo "<td><small class='text-muted'>" . htmlspecialchars($row['user_agent']) . "</small></td>";
                                     echo "<td>" . htmlspecialchars(date('d.m.Y H:i:s', strtotime($row['opened_at']))) . "</td>";
                                     echo "</tr>";
                                 }
-                            } catch (PDOException $e) {
-                                echo "<tr><td colspan='4' class='text-center text-muted'>Veri çekme hatası oluştu.</td></tr>";
+                            } catch(PDOException $e) {
+                                echo "<tr><td colspan='5' class='text-center text-muted'>Veri çekme hatası oluştu.</td></tr>";
                             }
                             ?>
                         </tbody>
@@ -411,6 +632,7 @@ if (!isset($_SESSION['user_id'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         function copyUrl(button) {
             const urlText = button.parentElement.textContent.trim();
@@ -421,6 +643,34 @@ if (!isset($_SESSION['user_id'])) {
                 }, 2000);
             });
         }
+
+        // Harita başlatma
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Konum verilerini haritaya ekle
+        <?php
+        try {
+            $stmt = $pdo->query("
+                SELECT latitude, longitude, COUNT(*) as count 
+                FROM geo_locations 
+                WHERE latitude IS NOT NULL 
+                GROUP BY latitude, longitude
+            ");
+            while ($point = $stmt->fetch()) {
+                echo "L.circle([{$point['latitude']}, {$point['longitude']}], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: {$point['count']} * 5000
+                }).addTo(map);\n";
+            }
+        } catch(PDOException $e) {
+            // Hata durumunda haritada nokta gösterme
+        }
+        ?>
     </script>
 </body>
 

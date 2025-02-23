@@ -18,6 +18,7 @@ E-posta takip sistemi - Mail açılma bildirimlerini anlık olarak takip edin.
 
 ## 🚀 Özellikler
 
+### Temel Özellikler
 - ✉️ E-posta açılma takibi
 - 🔔 Anlık Telegram bildirimleri
 - 🎨 Modern ve responsive web arayüzü
@@ -27,6 +28,16 @@ E-posta takip sistemi - Mail açılma bildirimlerini anlık olarak takip edin.
 - 📱 Mobil uyumlu tasarım
 - 🔄 Kolay entegrasyon
 - 📈 Gerçek zamanlı istatistikler
+
+### Yeni Özellikler
+- 📝 Hazır E-posta Şablonları
+- 📍 Coğrafi Konum Takibi
+- 📊 Kampanya Yönetimi
+- 👥 Çoklu Kullanıcı Desteği
+- 🔑 Rol Tabanlı Yetkilendirme
+- 📱 API Desteği (yakında)
+- 📊 Gelişmiş Raporlama
+- 🌍 Çoklu Dil Desteği (yakında)
 
 ## 📋 Gereksinimler
 
@@ -199,4 +210,36 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosy
 
 - 📧 E-posta: [eposta@adresiniz.com](mailto:eposta@adresiniz.com)
 - 🌐 Website: [www.siteniz.com](https://www.siteniz.com)
-- 💬 Telegram: [@kullaniciadiniz](https://t.me/kullaniciadiniz) 
+- 💬 Telegram: [@kullaniciadiniz](https://t.me/kullaniciadiniz)
+
+## 📊 Özellik Detayları
+
+### 📝 E-posta Şablonları
+- Hazır HTML şablonları
+- Özelleştirilebilir tasarımlar
+- Kategori bazlı organizasyon
+- Otomatik tracking pixel entegrasyonu
+- Şablon önizleme
+- Drag & Drop editör (yakında)
+
+### 📍 Coğrafi Konum Takibi
+- Ülke bazlı takip
+- Şehir ve bölge bilgisi
+- Harita üzerinde görselleştirme
+- Konum bazlı raporlama
+- IP bazlı otomatik konum tespiti
+
+### 📊 Kampanya Yönetimi
+- Kampanya bazlı takip
+- Başlangıç/bitiş tarihi
+- Açılma oranları
+- Kampanya performans analizi
+- Otomatik raporlama
+- A/B testi desteği (yakında)
+
+### 👥 Kullanıcı Yönetimi
+- Rol tabanlı yetkilendirme (Admin, Editör, İzleyici)
+- Kullanıcı aktivite logları
+- Güvenli şifre politikası
+- İki faktörlü doğrulama (yakında)
+- Oturum yönetimi 
