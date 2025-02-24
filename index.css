@@ -156,15 +156,6 @@ body {
 /* Responsive */
 @media (max-width: 992px) {
 
-    .campaigns-table th,
-    .campaigns-table td {
-        width: auto !important;
-    }
-
-    .campaigns-table td:nth-child(2) {
-        max-width: 200px;
-    }
-
     .tracking-url-card .url-display {
         flex-direction: column;
         gap: 0.5rem;
@@ -172,21 +163,5 @@ body {
 
     .tracking-url-card .copy-btn {
         width: 100%;
-    }
-}
-
-@media (max-width: 768px) {
-    .dataTables_filter input {
-        width: 100%;
-        min-width: auto;
-    }
-
-    .dataTables_length,
-    .dataTables_filter,
-    .dataTables_info,
-    .dataTables_paginate {
-        text-align: center;
-        justify-content: center;
-        margin-bottom: 1rem;
     }
 }

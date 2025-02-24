@@ -416,7 +416,7 @@ if (isset($_GET['api'])) {
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="card-title">
                                     <i class="bi bi-graph-up me-2"></i>Kampanyalar
-                                </h5>
+                            </h5>
                                 <button class="btn btn-primary" onclick="showCampaignModal()">
                                     <i class="bi bi-plus-lg me-1"></i>Yeni Kampanya
                                 </button>
@@ -448,7 +448,7 @@ if (isset($_GET['api'])) {
                     <div class="flex-grow-1">
                         <h5 class="card-title mb-0">
                             <i class="bi bi-link-45deg me-2"></i>Hızlı Takip URL (Tek Seferlik)
-                        </h5>
+                </h5>
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="generateNewTrackingUrl()">
                         <i class="bi bi-arrow-clockwise me-1"></i>Yeni Oluştur
