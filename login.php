@@ -9,24 +9,12 @@ session_start();
 
 // Environment yardımcısını yükle
 require_once __DIR__ . '/helpers/env.php';
+require_once __DIR__ . '/helpers/db.php';
 
 // Eğer kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
 if (isset($_SESSION['user_id'])) {
     header('Location: index.php');
     exit;
-}
-
-// Veritabanı bağlantısı
-try {
-    $pdo = new PDO(
-        "mysql:host=" . env('DB_HOST') . ";dbname=" . env('DB_NAME'),
-        env('DB_USER'),
-        env('DB_PASS')
-    );
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    error_log("Database connection error: " . $e->getMessage());
-    die("Veritabanı bağlantı hatası! Lütfen sistem yöneticisi ile iletişime geçin.");
 }
 
 // Login işlemi
@@ -54,11 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
                 header('Location: index.php');
                 exit;
             } else {
-                error_log("Login failed for user: " . $username);
                 $login_error = "Geçersiz kullanıcı adı veya şifre!";
             }
         } catch (PDOException $e) {
-            error_log("Login error: " . $e->getMessage());
             $login_error = "Giriş yapılırken bir hata oluştu!";
         }
     }
