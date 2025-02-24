@@ -329,6 +329,7 @@ if (isset($_GET['api'])) {
                         <thead>
                             <tr>
                                 <th>Takip Kodu</th>
+                                <th>Kampanya</th>
                                 <th>IP Adresi</th>
                                 <th>Konum</th>
                                 <th>Tarayıcı</th>
@@ -339,9 +340,10 @@ if (isset($_GET['api'])) {
                             <?php
                             try {
                                 $stmt = $pdo->query("
-                                    SELECT l.*, g.country, g.city 
+                                    SELECT l.*, g.country, g.city, c.name as campaign_name 
                                     FROM email_logs l 
                                     LEFT JOIN geo_locations g ON l.id = g.log_id 
+                                    LEFT JOIN campaigns c ON SUBSTRING(l.tracking_id, 1, 8) = c.tracking_prefix
                                     ORDER BY l.opened_at DESC 
                                     LIMIT 50
                                 ");
@@ -350,6 +352,7 @@ if (isset($_GET['api'])) {
                                     $hasRows = true;
                                     echo "<tr>";
                                     echo "<td><span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span></td>";
+                                    echo "<td>" . ($row['campaign_name'] ? "<span class='badge bg-info'>" . htmlspecialchars($row['campaign_name']) . "</span>" : "<span class='badge bg-secondary'>Hızlı Takip</span>") . "</td>";
                                     echo "<td>" . htmlspecialchars($row['ip_address']) . "</td>";
                                     echo "<td>" . ($row['city'] ? htmlspecialchars($row['city'] . ', ' . $row['country']) : '-') . "</td>";
                                     echo "<td><small class='text-muted'>" . htmlspecialchars($row['user_agent']) . "</small></td>";
@@ -357,10 +360,10 @@ if (isset($_GET['api'])) {
                                     echo "</tr>";
                                 }
                                 if (!$hasRows) {
-                                    echo "<tr><td colspan='5' class='text-center text-muted py-4'><i class='bi bi-inbox me-2'></i>Henüz e-posta açılması kaydedilmedi</td></tr>";
+                                    echo "<tr><td colspan='6' class='text-center text-muted py-4'><i class='bi bi-inbox me-2'></i>Henüz e-posta açılması kaydedilmedi</td></tr>";
                                 }
                             } catch (PDOException $e) {
-                                echo "<tr><td colspan='5' class='text-center text-muted py-4'><i class='bi bi-exclamation-triangle me-2'></i>Veri çekme hatası oluştu</td></tr>";
+                                echo "<tr><td colspan='6' class='text-center text-muted py-4'><i class='bi bi-exclamation-triangle me-2'></i>Veri çekme hatası oluştu</td></tr>";
                             }
                             ?>
                         </tbody>
