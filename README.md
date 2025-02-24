@@ -1,245 +1,137 @@
-# 📧 Mail Tracker
+# Mail Tracker
 
-E-posta takip sistemi - Mail açılma bildirimlerini anlık olarak takip edin.
+E-posta takip sistemi - E-postaların açılma durumunu ve coğrafi konumunu takip edin.
+@author A. Kerem Gök
 
-**Geliştirici:** A. Kerem Gök
+## Özellikler
 
-## 📌 İçindekiler
+- 📧 E-posta açılma takibi
+- 📊 Detaylı istatistikler
+  - Toplam açılma sayısı
+  - Benzersiz IP sayısı
+  - Günlük açılma sayısı
+  - Aktif kampanya sayısı
+- 🌍 Coğrafi konum takibi
+  - Şehir ve ülke bazlı takip
+  - Harita üzerinde görselleştirme
+- 📱 Mobil uyumlu arayüz
+- 🔒 Rol tabanlı yetkilendirme sistemi
+  - Admin: Tam yetki
+  - Editor: Kampanya yönetimi
+  - Viewer: Sadece görüntüleme
+- 📈 Kampanya yönetimi
+  - Kampanya oluşturma ve düzenleme
+  - Kampanya bazlı istatistikler
+  - Hızlı takip URL oluşturma
+- 🔔 Telegram bildirimleri
+  - Anlık e-posta açılma bildirimleri
+  - Detaylı bilgi (IP, konum, tarayıcı)
 
-- [Özellikler](#-özellikler)
-- [Gereksinimler](#-gereksinimler)
-- [Kurulum](#️-kurulum)
-- [Kullanım](#-kullanım)
-- [Güvenlik](#-güvenlik-notları)
-- [Özellik Detayları](#-özellik-detayları)
-- [SSS](#-sık-sorulan-sorular)
-- [Katkıda Bulunma](#-katkıda-bulunma)
-- [Lisans](#-lisans)
+## Kurulum
 
-## 🚀 Özellikler
+### Gereksinimler
 
-### Temel Özellikler
-- ✉️ E-posta açılma takibi
-- 🔔 Anlık Telegram bildirimleri
-- 🎨 Modern ve responsive web arayüzü
-- 📊 Detaylı istatistikler ve raporlama
-- 🔍 IP ve tarayıcı bilgisi takibi
-- 🔐 Güvenli giriş sistemi
-- 📱 Mobil uyumlu tasarım
-- 🔄 Kolay entegrasyon
-- 📈 Gerçek zamanlı istatistikler
+- PHP 7.4 veya üzeri
+- MySQL 5.7 veya üzeri
+- Composer
+- Web sunucusu (Apache/Nginx)
 
-### Yeni Özellikler
-- 📝 Hazır E-posta Şablonları
-- 📍 Coğrafi Konum Takibi
-- 📊 Kampanya Yönetimi
-- 👥 Çoklu Kullanıcı Desteği
-- 🔑 Rol Tabanlı Yetkilendirme
-- 📱 API Desteği (yakında)
-- 📊 Gelişmiş Raporlama
-- 🌍 Çoklu Dil Desteği (yakında)
+### Adımlar
 
-## 📋 Gereksinimler
-
-- 🔧 PHP 7.4 veya üzeri
-- 📦 MySQL/MariaDB
-- 🌐 Web sunucusu (Apache/Nginx)
-- 🤖 Telegram Bot API erişimi
-- 📨 SMTP sunucusu (opsiyonel)
-
-## ⚙️ Kurulum
-
-### 1. Dosyaları Yükleme
-
+1. Projeyi klonlayın:
 ```bash
-# Projeyi klonlayın
-git clone https://github.com/kullaniciadi/mail-tracker.git
-
-# Proje dizinine girin
+git clone https://github.com/username/mail-tracker.git
 cd mail-tracker
-
-# Gerekli izinleri ayarlayın
-chmod 755 .
-chmod 644 *.php
 ```
 
-### 2. Veritabanı Kurulumu
-
-1. MySQL/MariaDB veritabanınıza bağlanın
-2. `setup.sql` dosyasını çalıştırın:
-```sql
-source setup.sql
+2. Veritabanını oluşturun:
+```bash
+mysql -u root -p < setup.sql
 ```
 
-### 3. Veritabanı Bağlantı Ayarları
+3. Çevresel değişkenleri ayarlayın:
+```bash
+cp .env.example .env
+```
+`.env` dosyasını düzenleyin:
+```
+DB_HOST=localhost
+DB_NAME=mail_tracker
+DB_USER=root
+DB_PASS=your_password
 
-`index.php` dosyasındaki veritabanı bağlantı bilgilerini güncelleyin:
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 
-```php
-$db_host = 'localhost';
-$db_name = 'mail_tracker';
-$db_user = 'root';     // Veritabanı kullanıcı adınız
-$db_pass = '';         // Veritabanı şifreniz
+IPAPI_KEY=your_ipapi_key
 ```
 
-### 4. Telegram Bot Kurulumu
-
-1. **Bot Oluşturma:**
-   - Telegram'da [@BotFather](https://t.me/botfather) ile sohbet başlatın
-   - `/newbot` komutunu gönderin
-   - Bot için bir isim belirleyin (örn: "Mail Tracker Bot")
-   - Bot için bir kullanıcı adı belirleyin (örn: "mail_tracker_bot")
-   - Size verilen TOKEN'ı kaydedin
-
-2. **Chat ID Alma:**
-   - Oluşturduğunuz bot ile özel mesaj başlatın ("/start")
-   - Bota herhangi bir mesaj gönderin
-   - Şu URL'i ziyaret edin:
-     ```
-     https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
-     ```
-   - JSON yanıtında `chat` > `id` değerini bulun
-
-3. **Bot Ayarlarını Yapılandırma:**
-   - `index.php` dosyasını açın
-   - Bot bilgilerini ekleyin:
-     ```php
-     define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE');
-     define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE');
-     ```
-
-### 5. Giriş Bilgileri
-
-**Varsayılan Hesap:**
-- 👤 Kullanıcı adı: `admin`
-- 🔑 Şifre: `admin123`
-
-**Şifre Değiştirme:**
-1. Veritabanına bağlanın
-2. Aşağıdaki SQL komutunu çalıştırın:
-```sql
--- Yeni şifre için güvenli hash oluşturma
-UPDATE admins 
-SET password = '$2y$10$' || SHA2('YeniŞifreniz', 256) 
-WHERE username = 'admin';
+4. Bağımlılıkları yükleyin:
+```bash
+composer install
 ```
 
-## 📝 Kullanım
+5. Web sunucusunu yapılandırın:
 
-### 1. Sisteme Giriş
-
-1. Web arayüzünü açın
-2. Kullanıcı adı ve şifrenizle giriş yapın
-3. Giriş yaptıktan sonra dashboard'a yönlendirileceksiniz
-
-### 2. Tracking URL Oluşturma
-
-1. Dashboard'da "Tracking URL Oluşturucu" bölümüne gidin
-2. "Yeni URL Oluştur" butonuna tıklayın
-3. Oluşturulan URL'i e-postanıza ekleyin:
-
-```html
-<!-- Görünmez tracking pixel -->
-<img src="http://sizinsiteniz.com/index.php?track=TRACKING_ID" 
-     width="1" 
-     height="1" 
-     style="display:none">
-
-<!-- veya -->
-
-<!-- Görünür logo/imza olarak -->
-<img src="http://sizinsiteniz.com/index.php?track=TRACKING_ID" 
-     width="150" 
-     alt="Logo">
+Apache için (.htaccess):
+```apache
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
 ```
 
-### 3. Bildirimleri Takip Etme
+Nginx için:
+```nginx
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+```
 
-- 📱 Telegram'dan anlık bildirimler
-- 📊 Web arayüzünden detaylı istatistikler
-- 📈 Günlük/haftalık/aylık raporlar
-- 🔍 Detaylı açılma bilgileri
+6. Dizin izinlerini ayarlayın:
+```bash
+chmod 755 -R *
+chmod 777 -R logs/
+```
 
-## 🔒 Güvenlik Notları
+### İlk Kullanıcı
 
-1. **Veritabanı Güvenliği:**
-   - Güçlü şifreler kullanın
-   - Düzenli yedek alın
-   - Gereksiz yetkileri kaldırın
+Varsayılan admin kullanıcısı:
+- Kullanıcı adı: admin
+- Şifre: admin123
 
-2. **API Güvenliği:**
-   - Telegram token'ını gizli tutun
-   - Rate limiting uygulayın
-   - IP kısıtlaması ekleyin
+İlk girişten sonra şifrenizi değiştirmeyi unutmayın!
 
-3. **Genel Güvenlik:**
-   - SSL/TLS kullanın
-   - Güvenlik duvarı kurun
-   - Düzenli güncelleme yapın
+## Kullanım
 
-## 💡 Sık Sorulan Sorular
+1. E-posta Takibi:
+   - Kampanya oluşturun
+   - Tracking kodunu kopyalayın
+   - E-postanıza ekleyin (görünmez piksel veya görünür logo)
+   - Açılmaları takip edin
 
-1. **Mail açılma bildirimi almıyorum?**
-   - Telegram bot ayarlarını kontrol edin
-   - Internet bağlantınızı kontrol edin
-   - Log dosyalarını inceleyin
+2. Hızlı Takip:
+   - "Hızlı Takip URL" oluşturun
+   - Tek seferlik kullanım için idealdir
+   - Otomatik olarak kampanyalara dahil edilmez
 
-2. **Tracking çalışmıyor?**
-   - URL'in doğru olduğundan emin olun
-   - E-posta istemcisinin resimleri gösterdiğinden emin olun
-   - Sunucu erişimini kontrol edin
+3. İstatistikler:
+   - Genel istatistikleri görüntüleyin
+   - Kampanya bazlı raporları inceleyin
+   - Coğrafi dağılımı haritada görün
 
-3. **Giriş yapamıyorum?**
-   - Veritabanı bağlantısını kontrol edin
-   - Şifrenizi sıfırlayın
-   - Hata loglarını inceleyin
+## Güvenlik
 
-## 🤝 Katkıda Bulunma
+- SQL injection koruması
+- XSS koruması
+- CSRF koruması
+- Rol tabanlı yetkilendirme
+- Şifreleme ve hash kullanımı
 
-1. Bu depoyu fork edin
-2. Feature branch oluşturun (`git checkout -b yeni-ozellik`)
-3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik: XYZ'`)
-4. Branch'inizi push edin (`git push origin yeni-ozellik`)
-5. Pull Request oluşturun
-
-## 📜 Lisans
+## Lisans
 
 Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın.
 
-## 📞 İletişim
+## Destek
 
-- 📧 E-posta: [eposta@adresiniz.com](mailto:eposta@adresiniz.com)
-- 🌐 Website: [www.siteniz.com](https://www.siteniz.com)
-- 💬 Telegram: [@kullaniciadiniz](https://t.me/kullaniciadiniz)
-
-## 📊 Özellik Detayları
-
-### 📝 E-posta Şablonları
-- Hazır HTML şablonları
-- Özelleştirilebilir tasarımlar
-- Kategori bazlı organizasyon
-- Otomatik tracking pixel entegrasyonu
-- Şablon önizleme
-- Drag & Drop editör (yakında)
-
-### 📍 Coğrafi Konum Takibi
-- Ülke bazlı takip
-- Şehir ve bölge bilgisi
-- Harita üzerinde görselleştirme
-- Konum bazlı raporlama
-- IP bazlı otomatik konum tespiti
-
-### 📊 Kampanya Yönetimi
-- Kampanya bazlı takip
-- Başlangıç/bitiş tarihi
-- Açılma oranları
-- Kampanya performans analizi
-- Otomatik raporlama
-- A/B testi desteği (yakında)
-
-### 👥 Kullanıcı Yönetimi
-- Rol tabanlı yetkilendirme (Admin, Editör, İzleyici)
-- Kullanıcı aktivite logları
-- Güvenli şifre politikası
-- İki faktörlü doğrulama (yakında)
-- Oturum yönetimi 
+Sorun bildirimi ve öneriler için Issues bölümünü kullanabilirsiniz. 
