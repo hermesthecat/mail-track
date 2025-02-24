@@ -331,6 +331,43 @@ if (isset($_GET['api'])) {
                 'data' => $data
             ]);
             break;
+
+        case 'change_password':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                http_response_code(405);
+                echo json_encode(['error' => 'Method not allowed']);
+                exit;
+            }
+
+            try {
+                $data = json_decode(file_get_contents('php://input'), true);
+
+                // Gerekli alanları kontrol et
+                if (!isset($data['current_password']) || !isset($data['new_password'])) {
+                    throw new Exception('Gerekli alanlar eksik');
+                }
+
+                // Mevcut şifreyi kontrol et
+                $stmt = $pdo->prepare("SELECT password FROM admins WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch();
+
+                if (!$user || !password_verify($data['current_password'], $user['password'])) {
+                    throw new Exception('Mevcut şifre yanlış');
+                }
+
+                // Yeni şifreyi hashle ve güncelle
+                $new_password_hash = password_hash($data['new_password'], PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE admins SET password = ? WHERE id = ?");
+                $stmt->execute([$new_password_hash, $_SESSION['user_id']]);
+
+                echo json_encode(['success' => true]);
+            } catch (Exception $e) {
+                http_response_code(400);
+                echo json_encode(['error' => $e->getMessage()]);
+            }
+            exit;
+            break;
     }
     exit;
 }
@@ -361,6 +398,9 @@ if (isset($_GET['api'])) {
                     Hoş geldiniz, <?php echo htmlspecialchars($_SESSION['username']); ?>
                     (<?php echo ucfirst($_SESSION['role']); ?>)
                 </span>
+                <button class="btn btn-link text-white border-0 p-0 me-3" onclick="showChangePasswordModal()">
+                    <i class="bi bi-key me-1"></i>Şifre Değiştir
+                </button>
                 <a href="?logout=1" class="logout-btn">
                     <i class="bi bi-box-arrow-right me-1"></i>Çıkış Yap
                 </a>
@@ -416,7 +456,7 @@ if (isset($_GET['api'])) {
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="card-title">
                                     <i class="bi bi-graph-up me-2"></i>Kampanyalar
-                            </h5>
+                                </h5>
                                 <button class="btn btn-primary" onclick="showCampaignModal()">
                                     <i class="bi bi-plus-lg me-1"></i>Yeni Kampanya
                                 </button>
@@ -448,7 +488,7 @@ if (isset($_GET['api'])) {
                     <div class="flex-grow-1">
                         <h5 class="card-title mb-0">
                             <i class="bi bi-link-45deg me-2"></i>Hızlı Takip URL (Tek Seferlik)
-                </h5>
+                        </h5>
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="generateNewTrackingUrl()">
                         <i class="bi bi-arrow-clockwise me-1"></i>Yeni Oluştur
@@ -467,7 +507,7 @@ if (isset($_GET['api'])) {
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title mb-3">
-                    <i class="bi bi-clock-history me-2"></i>Son E-posta Açılmaları
+                    <i class="bi bi-clock-history me-2"></i>E-posta Açılmaları
                 </h5>
                 <div class="table-responsive">
                     <table class="table table-hover" id="logsTable">
@@ -478,7 +518,7 @@ if (isset($_GET['api'])) {
                                 <th>IP Adresi</th>
                                 <th>Konum</th>
                                 <th>Tarayıcı</th>
-                                <th>Açılma Zamanı</th>
+                                <th>Tarih</th>
                             </tr>
                         </thead>
                     </table>
@@ -553,6 +593,39 @@ if (isset($_GET['api'])) {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Şifre Değiştirme Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Şifre Değiştir</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="changePasswordForm">
+                        <div class="mb-3">
+                            <label class="form-label">Mevcut Şifre</label>
+                            <input type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Yeni Şifre</label>
+                            <input type="password" class="form-control" id="newPassword" required
+                                pattern=".{8,}" title="Şifre en az 8 karakter olmalıdır">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Yeni Şifre (Tekrar)</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="changePassword()">Değiştir</button>
                 </div>
             </div>
         </div>
@@ -894,6 +967,65 @@ if (isset($_GET['api'])) {
                 ]
             });
         });
+
+        // Şifre değiştirme modalını göster
+        function showChangePasswordModal() {
+            // Form alanlarını temizle
+            document.getElementById('changePasswordForm').reset();
+            // Modalı göster
+            new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+        }
+
+        // Şifre değiştirme işlemi
+        function changePassword() {
+            const form = document.getElementById('changePasswordForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Şifre kontrolü
+            if (newPassword !== confirmPassword) {
+                showError('Yeni şifreler eşleşmiyor!');
+                return;
+            }
+
+            // Şifre uzunluk kontrolü
+            if (newPassword.length < 8) {
+                showError('Yeni şifre en az 8 karakter olmalıdır!');
+                return;
+            }
+
+            // API isteği
+            fetch('?api=change_password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                        showSuccess('Şifreniz başarıyla değiştirildi.');
+                        // Formu temizle
+                        form.reset();
+                    } else {
+                        showError(result.error || 'Şifre değiştirme işlemi başarısız oldu.');
+                    }
+                })
+                .catch(error => {
+                    showError('Bir hata oluştu: ' + error.message);
+                });
+        }
     </script>
 </body>
 

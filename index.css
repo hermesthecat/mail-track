@@ -195,32 +195,38 @@ body {
 }
 
 /* Sütun genişlik ayarları */
-#campaignsTable th:nth-child(1), /* Kampanya Adı */
+#campaignsTable th:nth-child(1),
+/* Kampanya Adı */
 #campaignsTable td:nth-child(1) {
     width: 20%;
 }
 
-#campaignsTable th:nth-child(2), /* Açıklama */
+#campaignsTable th:nth-child(2),
+/* Açıklama */
 #campaignsTable td:nth-child(2) {
     width: 30%;
 }
 
-#campaignsTable th:nth-child(3), /* Takip Kodu */
+#campaignsTable th:nth-child(3),
+/* Takip Kodu */
 #campaignsTable td:nth-child(3) {
     width: 15%;
 }
 
-#campaignsTable th:nth-child(4), /* Açılma */
+#campaignsTable th:nth-child(4),
+/* Açılma */
 #campaignsTable td:nth-child(4) {
     width: 10%;
 }
 
-#campaignsTable th:nth-child(5), /* Oluşturan/Tarih */
+#campaignsTable th:nth-child(5),
+/* Oluşturan/Tarih */
 #campaignsTable td:nth-child(5) {
     width: 15%;
 }
 
-#campaignsTable th:nth-child(6), /* İşlemler */
+#campaignsTable th:nth-child(6),
+/* İşlemler */
 #campaignsTable td:nth-child(6) {
     width: 10%;
     text-align: center;
@@ -231,7 +237,7 @@ body {
     #campaignsTable {
         table-layout: auto;
     }
-    
+
     #campaignsTable thead th,
     #campaignsTable tbody td {
         white-space: normal;
@@ -268,32 +274,38 @@ body {
 }
 
 /* Sütun genişlik ayarları */
-#logsTable th:nth-child(1), /* Takip Kodu */
+#logsTable th:nth-child(1),
+/* Takip Kodu */
 #logsTable td:nth-child(1) {
     width: 15%;
 }
 
-#logsTable th:nth-child(2), /* Kampanya */
+#logsTable th:nth-child(2),
+/* Kampanya */
 #logsTable td:nth-child(2) {
     width: 15%;
 }
 
-#logsTable th:nth-child(3), /* IP Adresi */
+#logsTable th:nth-child(3),
+/* IP Adresi */
 #logsTable td:nth-child(3) {
     width: 15%;
 }
 
-#logsTable th:nth-child(4), /* Konum */
+#logsTable th:nth-child(4),
+/* Konum */
 #logsTable td:nth-child(4) {
     width: 20%;
 }
 
-#logsTable th:nth-child(5), /* Tarayıcı */
+#logsTable th:nth-child(5),
+/* Tarayıcı */
 #logsTable td:nth-child(5) {
     width: 20%;
 }
 
-#logsTable th:nth-child(6), /* Açılma Zamanı */
+#logsTable th:nth-child(6),
+/* Açılma Zamanı */
 #logsTable td:nth-child(6) {
     width: 15%;
 }
@@ -303,10 +315,67 @@ body {
     #logsTable {
         table-layout: auto;
     }
-    
+
     #logsTable thead th,
     #logsTable tbody td {
         white-space: normal;
         min-width: 120px;
     }
+}
+
+/* Şifre Değiştirme Modal Stilleri */
+#changePasswordModal .modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+#changePasswordModal .modal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+#changePasswordModal .modal-title {
+    font-weight: 600;
+}
+
+#changePasswordModal .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+#changePasswordModal .form-label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+#changePasswordModal .form-control {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+#changePasswordModal .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+}
+
+#changePasswordModal .btn-primary {
+    background: var(--primary-color);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+}
+
+#changePasswordModal .btn-secondary {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+}
+
+#changePasswordModal .btn-secondary:hover {
+    background: var(--hover-color);
 }
