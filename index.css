@@ -167,3 +167,47 @@ body {
     background-color: #ef4444;
     border-color: #ef4444;
 }
+
+/* Tracking kodu modalı stilleri */
+.code-block {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.code-block pre {
+    font-family: monospace;
+    font-size: 0.9rem;
+    margin: 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.code-block .copy-btn {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.code-block:hover .copy-btn {
+    opacity: 1;
+}
+
+.table code {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.table code:hover {
+    background-color: #e2e8f0;
+}

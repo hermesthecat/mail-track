@@ -401,6 +401,38 @@ if (isset($_GET['api'])) {
         </div>
     </div>
 
+    <!-- Tracking Link Modal -->
+    <div class="modal fade" id="trackingLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tracking HTML Kodu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">1x1 Görünmez Piksel</label>
+                        <div class="code-block">
+                            <pre id="invisibleCode" class="bg-light p-3 rounded"></pre>
+                            <button class="copy-btn" onclick="copyCode('invisibleCode')">
+                                <i class="bi bi-clipboard me-1"></i>Kopyala
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Görünür Logo/İmza</label>
+                        <div class="code-block">
+                            <pre id="visibleCode" class="bg-light p-3 rounded"></pre>
+                            <button class="copy-btn" onclick="copyCode('visibleCode')">
+                                <i class="bi bi-clipboard me-1"></i>Kopyala
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
@@ -442,6 +474,35 @@ if (isset($_GET['api'])) {
         }
         ?>
 
+        // Tracking kodunu göster
+        function showTrackingCode(prefix) {
+            const baseUrl = window.location.href.split('?')[0];
+            const trackingId = prefix + Date.now().toString(16);
+            const trackingUrl = baseUrl + '?track=' + trackingId;
+            
+            // Görünmez piksel kodu
+            document.getElementById('invisibleCode').textContent = 
+                `<img src="${trackingUrl}" width="1" height="1" style="display:none">`;
+            
+            // Görünür logo kodu
+            document.getElementById('visibleCode').textContent = 
+                `<img src="${trackingUrl}" width="150" alt="Logo">`;
+            
+            new bootstrap.Modal(document.getElementById('trackingLinkModal')).show();
+        }
+
+        // Kodu kopyala
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const button = document.querySelector(`#${elementId}`).nextElementSibling;
+                button.innerHTML = '<i class="bi bi-check2 me-1"></i>Kopyalandı';
+                setTimeout(() => {
+                    button.innerHTML = '<i class="bi bi-clipboard me-1"></i>Kopyala';
+                }, 2000);
+            });
+        }
+
         // Kampanya listesini yükle
         function loadCampaigns() {
             fetch('?api=campaigns')
@@ -455,7 +516,7 @@ if (isset($_GET['api'])) {
                             <tr>
                                 <td>${escapeHtml(campaign.name)}</td>
                                 <td>${escapeHtml(campaign.description || '')}</td>
-                                <td><code>${campaign.tracking_prefix}</code></td>
+                                <td><code style="cursor: pointer" onclick="showTrackingCode('${campaign.tracking_prefix}')">${campaign.tracking_prefix}</code></td>
                                 <td>${campaign.total_opened} / ${campaign.total_sent}</td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary" onclick="editCampaign(${campaign.id})">
