@@ -345,7 +345,9 @@ if (isset($_GET['api'])) {
                                     ORDER BY l.opened_at DESC 
                                     LIMIT 50
                                 ");
+                                $hasRows = false;
                                 while ($row = $stmt->fetch()) {
+                                    $hasRows = true;
                                     echo "<tr>";
                                     echo "<td><span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span></td>";
                                     echo "<td>" . htmlspecialchars($row['ip_address']) . "</td>";
@@ -354,8 +356,11 @@ if (isset($_GET['api'])) {
                                     echo "<td>" . htmlspecialchars(date('d.m.Y H:i:s', strtotime($row['opened_at']))) . "</td>";
                                     echo "</tr>";
                                 }
+                                if (!$hasRows) {
+                                    echo "<tr><td colspan='5' class='text-center text-muted py-4'><i class='bi bi-inbox me-2'></i>Henüz e-posta açılması kaydedilmedi</td></tr>";
+                                }
                             } catch (PDOException $e) {
-                                echo "<tr><td colspan='5' class='text-center text-muted'>Veri çekme hatası oluştu.</td></tr>";
+                                echo "<tr><td colspan='5' class='text-center text-muted py-4'><i class='bi bi-exclamation-triangle me-2'></i>Veri çekme hatası oluştu</td></tr>";
                             }
                             ?>
                         </tbody>
@@ -572,6 +577,17 @@ if (isset($_GET['api'])) {
                 .then(campaigns => {
                     const tbody = document.getElementById('campaignsTable');
                     tbody.innerHTML = '';
+
+                    if (campaigns.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>Henüz kampanya bulunmuyor
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
 
                     campaigns.forEach(campaign => {
                         tbody.innerHTML += `
