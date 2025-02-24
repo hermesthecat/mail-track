@@ -946,7 +946,7 @@ if (isset($_GET['api'])) {
 
         // DataTables başlat
         $(document).ready(function() {
-            $('#logsTable').DataTable({
+            const logsTable = $('#logsTable').DataTable({
                 processing: true,
                 serverSide: true,
                 ajax: '?api=logs',
@@ -957,6 +957,8 @@ if (isset($_GET['api'])) {
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
+                responsive: true,
+                autoWidth: true,
                 columns: [{
                         data: 0
                     }, // Takip Kodu
@@ -976,6 +978,15 @@ if (isset($_GET['api'])) {
                         data: 5
                     } // Açılma Zamanı
                 ]
+            });
+
+            // Pencere boyutu değiştiğinde tabloyu yeniden hesapla
+            let logsResizeTimer;
+            $(window).on('resize', function() {
+                clearTimeout(logsResizeTimer);
+                logsResizeTimer = setTimeout(function() {
+                    logsTable.columns.adjust().responsive.recalc();
+                }, 250);
             });
         });
 
