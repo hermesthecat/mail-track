@@ -238,3 +238,75 @@ body {
         min-width: 120px;
     }
 }
+
+/* Loglar Tablosu Stilleri */
+#logsTable_wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#logsTable_wrapper .table-responsive {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+#logsTable {
+    width: 100% !important;
+    margin: 0 !important;
+    table-layout: fixed;
+}
+
+/* Sütun genişlikleri */
+#logsTable thead th,
+#logsTable tbody td {
+    white-space: normal;
+    word-wrap: break-word;
+    padding: 12px 8px;
+}
+
+/* Sütun genişlik ayarları */
+#logsTable th:nth-child(1), /* Takip Kodu */
+#logsTable td:nth-child(1) {
+    width: 15%;
+}
+
+#logsTable th:nth-child(2), /* Kampanya */
+#logsTable td:nth-child(2) {
+    width: 15%;
+}
+
+#logsTable th:nth-child(3), /* IP Adresi */
+#logsTable td:nth-child(3) {
+    width: 15%;
+}
+
+#logsTable th:nth-child(4), /* Konum */
+#logsTable td:nth-child(4) {
+    width: 20%;
+}
+
+#logsTable th:nth-child(5), /* Tarayıcı */
+#logsTable td:nth-child(5) {
+    width: 20%;
+}
+
+#logsTable th:nth-child(6), /* Açılma Zamanı */
+#logsTable td:nth-child(6) {
+    width: 15%;
+}
+
+/* Mobil görünüm için düzenleme */
+@media (max-width: 992px) {
+    #logsTable {
+        table-layout: auto;
+    }
+    
+    #logsTable thead th,
+    #logsTable tbody td {
+        white-space: normal;
+        min-width: 120px;
+    }
+}
