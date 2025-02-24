@@ -398,8 +398,8 @@ if (isset($_GET['api'])) {
                     Hoş geldiniz, <?php echo htmlspecialchars($_SESSION['username']); ?>
                     (<?php echo ucfirst($_SESSION['role']); ?>)
                 </span>
-                <button class="btn btn-link text-white border-0 p-0 me-3" onclick="showChangePasswordModal()">
-                    <i class="bi bi-key me-1"></i>Şifre Değiştir
+                <button class="change-password-btn" onclick="showChangePasswordModal()">
+                    <i class="bi bi-key"></i>Şifre Değiştir
                 </button>
                 <a href="?logout=1" class="logout-btn">
                     <i class="bi bi-box-arrow-right me-1"></i>Çıkış Yap
