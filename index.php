@@ -458,15 +458,15 @@ if (isset($_GET['api'])) {
                                     <i class="bi bi-graph-up me-2"></i>Kampanyalar
                                 </h5>
                                 <button class="btn btn-primary" onclick="showCampaignModal()">
-                                    <i class="bi bi-plus-lg me-1"></i>Yeni Kampanya
+                                    <i class="bi bi-plus-lg me-1"></i>Yeni
                                 </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover" id="campaignsTable">
                                     <thead>
                                         <tr>
-                                            <th>Kampanya Adı</th>
-                                            <th>Açıklama</th>
+                                            <th>Kampanya</th>
+                                            <th>Detay</th>
                                             <th>Takip Kodu</th>
                                             <th>Açılma</th>
                                             <th>Oluşturan / Tarih</th>
@@ -491,7 +491,7 @@ if (isset($_GET['api'])) {
                         </h5>
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="generateNewTrackingUrl()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Yeni Oluştur
+                        <i class="bi bi-arrow-clockwise me-1"></i>Yenile
                     </button>
                 </div>
                 <div class="url-display mt-3">
