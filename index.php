@@ -7,109 +7,42 @@
 
 session_start();
 
-// Veritabanı bağlantı bilgileri
-$db_host = 'localhost';
-$db_name = 'mail_tracker';
-$db_user = 'root';
-$db_pass = '';
+// Environment yardımcısını yükle
+require_once __DIR__ . '/helpers/env.php';
+require_once __DIR__ . '/helpers/db.php';
+require_once __DIR__ . '/helpers/telegram.php';
+require_once __DIR__ . '/helpers/geolocation.php';
 
-// Telegram Bot Ayarları
-define('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE'); // Telegram bot token'ınızı buraya yazın
-define('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE'); // Bildirim alacağınız chat ID'yi buraya yazın
-
-// IP2Location veya MaxMind GeoIP için API anahtarı
-define('GEOIP_API_KEY', 'YOUR_GEOIP_API_KEY');
-
-// Yardımcı fonksiyonlar
-function getGeoLocation($ip) {
-    // IP2Location veya başka bir servis kullanarak konum bilgisi alınabilir
-    $url = "http://api.ipapi.com/" . $ip . "?access_key=" . GEOIP_API_KEY;
-    $response = @file_get_contents($url);
-    return json_decode($response, true);
-}
-
-// Telegram'a mesaj gönderme fonksiyonu
-function sendTelegramMessage($message)
-{
-    $url = "https://api.telegram.org/bot" . TELEGRAM_BOT_TOKEN . "/sendMessage";
-    $data = [
-        'chat_id' => TELEGRAM_CHAT_ID,
-        'text' => $message,
-        'parse_mode' => 'HTML'
-    ];
-
-    $options = [
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-            'content' => http_build_query($data)
-        ]
-    ];
-
-    $context = stream_context_create($options);
-    $result = @file_get_contents($url, false, $context);
-
-    if ($result === FALSE) {
-        error_log("Telegram bildirimi gönderilemedi");
-    }
-}
-
-// Veritabanı bağlantısı
-try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    error_log("Veritabanı bağlantı hatası: " . $e->getMessage());
+// Giriş kontrolü
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
 }
 
 // Yetki kontrolü
-function checkPermission($required_role = 'viewer') {
+function checkPermission($required_role = 'viewer')
+{
     if (!isset($_SESSION['user_id'])) return false;
-    
+
     global $pdo;
     try {
         $stmt = $pdo->prepare("SELECT role FROM admins WHERE id = ? AND is_active = 1");
         $stmt->execute([$_SESSION['user_id']]);
         $user = $stmt->fetch();
-        
+
         if (!$user) return false;
-        
+
         $roles = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
         return $roles[$user['role']] >= $roles[$required_role];
-    } catch(PDOException $e) {
-        return false;
-    }
-}
-
-// Login işlemi
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM admins WHERE username = ? AND is_active = 1");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            
-            // Son giriş zamanını güncelle
-            $pdo->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?")->execute([$user['id']]);
-        } else {
-            $login_error = "Geçersiz kullanıcı adı veya şifre!";
-        }
     } catch (PDOException $e) {
-        $login_error = "Giriş yapılırken bir hata oluştu!";
+        return false;
     }
 }
 
 // Çıkış işlemi
 if (isset($_GET['logout'])) {
     session_destroy();
-    header('Location: ' . $_SERVER['PHP_SELF']);
+    header('Location: login.php');
     exit;
 }
 
@@ -164,10 +97,10 @@ if (isset($_GET['track'])) {
             "⏰ Zaman: " . htmlspecialchars($timestamp);
 
         if ($geo_data) {
-            $message .= "\n📍 Konum: " . ($geo_data['city'] ?? '') . 
-                       ", " . ($geo_data['country_name'] ?? '');
+            $message .= "\n📍 Konum: " . ($geo_data['city'] ?? '') .
+                ", " . ($geo_data['country_name'] ?? '');
         }
-        
+
         sendTelegramMessage($message);
     } catch (PDOException $e) {
         error_log("Log kayıt hatası: " . $e->getMessage());
@@ -179,23 +112,23 @@ if (isset($_GET['track'])) {
 // API endpoint'leri
 if (isset($_GET['api'])) {
     header('Content-Type: application/json');
-    
+
     if (!checkPermission('editor')) {
         echo json_encode(['error' => 'Yetkisiz erişim']);
         exit;
     }
-    
+
     switch ($_GET['api']) {
         case 'templates':
             $stmt = $pdo->query("SELECT * FROM email_templates ORDER BY created_at DESC");
             echo json_encode($stmt->fetchAll());
             break;
-            
+
         case 'campaigns':
             $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
             echo json_encode($stmt->fetchAll());
             break;
-            
+
         case 'stats':
             $stats = [
                 'total_opens' => $pdo->query("SELECT COUNT(*) FROM email_logs")->fetchColumn(),
@@ -206,76 +139,6 @@ if (isset($_GET['api'])) {
             echo json_encode($stats);
             break;
     }
-    exit;
-}
-
-// Eğer kullanıcı giriş yapmamışsa login sayfasını göster
-if (!isset($_SESSION['user_id'])) {
-?>
-    <!DOCTYPE html>
-    <html lang="tr">
-
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mail Tracker - Giriş</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body {
-                background: linear-gradient(135deg, #2563eb, #1e40af);
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .login-card {
-                background: white;
-                padding: 2rem;
-                border-radius: 12px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                width: 100%;
-                max-width: 400px;
-            }
-
-            .login-header {
-                text-align: center;
-                margin-bottom: 2rem;
-            }
-
-            .login-header i {
-                font-size: 3rem;
-                color: #2563eb;
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="login-card">
-            <div class="login-header">
-                <i class="bi bi-envelope-check"></i>
-                <h2 class="mt-3">Mail Tracker</h2>
-                <p class="text-muted">Lütfen giriş yapın</p>
-            </div>
-            <?php if (isset($login_error)): ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($login_error); ?></div>
-            <?php endif; ?>
-            <form method="post">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Kullanıcı Adı</label>
-                    <input type="text" class="form-control" id="username" name="username" required>
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Şifre</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
-                </div>
-                <button type="submit" name="login" class="btn btn-primary w-100">Giriş Yap</button>
-            </form>
-        </div>
-    </body>
-
-    </html>
-<?php
     exit;
 }
 
@@ -291,149 +154,7 @@ if (!isset($_SESSION['user_id'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <style>
-        :root {
-            --primary-color: #2563eb;
-            --secondary-color: #1e40af;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background-color: #f8f9fa;
-            color: #1a1a1a;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            padding: 1rem;
-        }
-
-        .navbar-brand {
-            color: white !important;
-            font-weight: 600;
-            font-size: 1.5rem;
-        }
-
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-        }
-
-        .tracking-url-card {
-            background: linear-gradient(135deg, #ffffff, #f8f9fa);
-        }
-
-        .url-display {
-            background-color: #e9ecef;
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: monospace;
-            position: relative;
-        }
-
-        .copy-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .table {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .table th {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            color: #495057;
-        }
-
-        .badge {
-            font-size: 0.8rem;
-            padding: 0.35rem 0.65rem;
-        }
-
-        .stats-card {
-            text-align: center;
-            padding: 1.5rem;
-        }
-
-        .stats-number {
-            font-size: 2rem;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-
-        .stats-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
-
-        .user-info {
-            color: white;
-            margin-left: auto;
-        }
-
-        .logout-btn {
-            color: white;
-            text-decoration: none;
-            margin-left: 1rem;
-            padding: 0.5rem 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        #map {
-            height: 400px;
-            border-radius: 12px;
-            margin-top: 20px;
-        }
-        
-        .template-card {
-            cursor: pointer;
-        }
-        
-        .campaign-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-        
-        .campaign-active {
-            background-color: #10b981;
-        }
-        
-        .campaign-ended {
-            background-color: #ef4444;
-        }
-        
-        .campaign-scheduled {
-            background-color: #f59e0b;
-        }
-    </style>
+    <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
@@ -461,7 +182,7 @@ if (!isset($_SESSION['user_id'])) {
                 $unique_ips = $pdo->query("SELECT COUNT(DISTINCT ip_address) FROM email_logs")->fetchColumn();
                 $today_opens = $pdo->query("SELECT COUNT(*) FROM email_logs WHERE DATE(opened_at) = CURDATE()")->fetchColumn();
                 $active_campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns WHERE NOW() BETWEEN start_date AND COALESCE(end_date, NOW())")->fetchColumn();
-            } catch(PDOException $e) {
+            } catch (PDOException $e) {
                 $total_opens = $unique_ips = $today_opens = $active_campaigns = 0;
             }
             ?>
@@ -492,40 +213,40 @@ if (!isset($_SESSION['user_id'])) {
         </div>
 
         <?php if (checkPermission('editor')): ?>
-        <!-- Şablonlar ve Kampanyalar -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">
-                            <i class="bi bi-file-earmark-text me-2"></i>E-posta Şablonları
-                        </h5>
-                        <div class="list-group">
-                            <?php
-                            $stmt = $pdo->query("SELECT * FROM email_templates WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
-                            while ($template = $stmt->fetch()) {
-                                echo '<a href="#" class="list-group-item list-group-item-action template-card">';
-                                echo '<div class="d-flex w-100 justify-content-between">';
-                                echo '<h6 class="mb-1">' . htmlspecialchars($template['name']) . '</h6>';
-                                echo '<small class="text-muted">' . htmlspecialchars($template['category']) . '</small>';
-                                echo '</div>';
-                                echo '<small class="text-muted">' . htmlspecialchars($template['description']) . '</small>';
-                                echo '</a>';
-                            }
-                            ?>
+            <!-- Şablonlar ve Kampanyalar -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">
+                                <i class="bi bi-file-earmark-text me-2"></i>E-posta Şablonları
+                            </h5>
+                            <div class="list-group">
+                                <?php
+                                $stmt = $pdo->query("SELECT * FROM email_templates WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
+                                while ($template = $stmt->fetch()) {
+                                    echo '<a href="#" class="list-group-item list-group-item-action template-card">';
+                                    echo '<div class="d-flex w-100 justify-content-between">';
+                                    echo '<h6 class="mb-1">' . htmlspecialchars($template['name']) . '</h6>';
+                                    echo '<small class="text-muted">' . htmlspecialchars($template['category']) . '</small>';
+                                    echo '</div>';
+                                    echo '<small class="text-muted">' . htmlspecialchars($template['description']) . '</small>';
+                                    echo '</a>';
+                                }
+                                ?>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">
-                            <i class="bi bi-graph-up me-2"></i>Kampanyalar
-                        </h5>
-                        <div class="list-group">
-                            <?php
-                            $stmt = $pdo->query("
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">
+                                <i class="bi bi-graph-up me-2"></i>Kampanyalar
+                            </h5>
+                            <div class="list-group">
+                                <?php
+                                $stmt = $pdo->query("
                                 SELECT *, 
                                     CASE 
                                         WHEN NOW() < start_date THEN 'scheduled'
@@ -536,23 +257,23 @@ if (!isset($_SESSION['user_id'])) {
                                 ORDER BY created_at DESC 
                                 LIMIT 5
                             ");
-                            while ($campaign = $stmt->fetch()) {
-                                echo '<div class="list-group-item">';
-                                echo '<div class="d-flex w-100 justify-content-between">';
-                                echo '<h6 class="mb-1">';
-                                echo '<span class="campaign-status campaign-' . $campaign['status'] . '"></span>';
-                                echo htmlspecialchars($campaign['name']) . '</h6>';
-                                echo '<small class="text-muted">' . $campaign['total_opened'] . ' / ' . $campaign['total_sent'] . '</small>';
-                                echo '</div>';
-                                echo '<small class="text-muted">' . htmlspecialchars($campaign['description']) . '</small>';
-                                echo '</div>';
-                            }
-                            ?>
+                                while ($campaign = $stmt->fetch()) {
+                                    echo '<div class="list-group-item">';
+                                    echo '<div class="d-flex w-100 justify-content-between">';
+                                    echo '<h6 class="mb-1">';
+                                    echo '<span class="campaign-status campaign-' . $campaign['status'] . '"></span>';
+                                    echo htmlspecialchars($campaign['name']) . '</h6>';
+                                    echo '<small class="text-muted">' . $campaign['total_opened'] . ' / ' . $campaign['total_sent'] . '</small>';
+                                    echo '</div>';
+                                    echo '<small class="text-muted">' . htmlspecialchars($campaign['description']) . '</small>';
+                                    echo '</div>';
+                                }
+                                ?>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         <?php endif; ?>
 
         <!-- Tracking URL Kartı -->
@@ -620,7 +341,7 @@ if (!isset($_SESSION['user_id'])) {
                                     echo "<td>" . htmlspecialchars(date('d.m.Y H:i:s', strtotime($row['opened_at']))) . "</td>";
                                     echo "</tr>";
                                 }
-                            } catch(PDOException $e) {
+                            } catch (PDOException $e) {
                                 echo "<tr><td colspan='5' class='text-center text-muted'>Veri çekme hatası oluştu.</td></tr>";
                             }
                             ?>
@@ -667,7 +388,7 @@ if (!isset($_SESSION['user_id'])) {
                     radius: {$point['count']} * 5000
                 }).addTo(map);\n";
             }
-        } catch(PDOException $e) {
+        } catch (PDOException $e) {
             // Hata durumunda haritada nokta gösterme
         }
         ?>
