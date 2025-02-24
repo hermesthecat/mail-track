@@ -422,7 +422,7 @@ if (isset($_GET['api'])) {
                                 </button>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-hover campaigns-table" id="campaignsTable">
+                                <table class="table table-hover" id="campaignsTable">
                                     <thead>
                                         <tr>
                                             <th>Kampanya Adı</th>
