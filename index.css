@@ -36,24 +36,42 @@ body {
 }
 
 .url-display {
-    background-color: #e9ecef;
-    padding: 1rem;
-    border-radius: 8px;
-    font-family: monospace;
+    background-color: #f1f5f9;
+    padding: 0.75rem;
+    border-radius: 6px;
     position: relative;
+}
+
+.url-display code {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    word-break: break-all;
 }
 
 .copy-btn {
     position: absolute;
-    right: 10px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
     background: var(--primary-color);
     color: white;
     border: none;
-    padding: 5px 15px;
-    border-radius: 5px;
+    padding: 4px 12px;
+    border-radius: 4px;
     cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.url-display:hover .copy-btn {
+    opacity: 1;
+}
+
+.btn-primary.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.9rem;
 }
 
 .table {

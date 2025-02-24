@@ -129,7 +129,7 @@ if (isset($_GET['api'])) {
             else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $data = json_decode(file_get_contents('php://input'), true);
-                    
+
                     $stmt = $pdo->prepare("
                         INSERT INTO campaigns (name, description, tracking_prefix, created_by)
                         VALUES (?, ?, ?, ?)
@@ -150,7 +150,7 @@ if (isset($_GET['api'])) {
             else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 try {
                     $data = json_decode(file_get_contents('php://input'), true);
-                    
+
                     $stmt = $pdo->prepare("
                         UPDATE campaigns 
                         SET name = ?, description = ?
@@ -280,7 +280,7 @@ if (isset($_GET['api'])) {
                                         <tr>
                                             <th>Kampanya Adı</th>
                                             <th>Açıklama</th>
-                                            <th>Tracking Prefix</th>
+                                            <th>Takip Kodu (Tıklayın)</th>
                                             <th>Açılma</th>
                                             <th>İşlemler</th>
                                         </tr>
@@ -299,15 +299,18 @@ if (isset($_GET['api'])) {
         <!-- Tracking URL Kartı -->
         <div class="card tracking-url-card mb-4">
             <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="bi bi-link-45deg me-2"></i>Tracking URL Oluşturucu
-                </h5>
-                <div class="url-display">
-                    <?php
-                    $example_tracking_id = bin2hex(random_bytes(8));
-                    $tracking_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'] . "?track=" . $example_tracking_id;
-                    echo htmlspecialchars($tracking_url);
-                    ?>
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-link-45deg me-2"></i>Hızlı Takip URL (Tek Seferlik)
+                        </h5>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="generateNewTrackingUrl()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Yeni Oluştur
+                    </button>
+                </div>
+                <div class="url-display mt-3">
+                    <code id="quickTrackingUrl"></code>
                     <button class="copy-btn" onclick="copyUrl(this)">
                         <i class="bi bi-clipboard me-1"></i>Kopyala
                     </button>
@@ -479,15 +482,15 @@ if (isset($_GET['api'])) {
             const baseUrl = window.location.href.split('?')[0];
             const trackingId = prefix + Date.now().toString(16);
             const trackingUrl = baseUrl + '?track=' + trackingId;
-            
+
             // Görünmez piksel kodu
-            document.getElementById('invisibleCode').textContent = 
+            document.getElementById('invisibleCode').textContent =
                 `<img src="${trackingUrl}" width="1" height="1" style="display:none">`;
-            
+
             // Görünür logo kodu
-            document.getElementById('visibleCode').textContent = 
+            document.getElementById('visibleCode').textContent =
                 `<img src="${trackingUrl}" width="150" alt="Logo">`;
-            
+
             new bootstrap.Modal(document.getElementById('trackingLinkModal')).show();
         }
 
@@ -510,7 +513,7 @@ if (isset($_GET['api'])) {
                 .then(campaigns => {
                     const tbody = document.getElementById('campaignsTable');
                     tbody.innerHTML = '';
-                    
+
                     campaigns.forEach(campaign => {
                         tbody.innerHTML += `
                             <tr>
@@ -550,23 +553,25 @@ if (isset($_GET['api'])) {
             if (id) data.id = id;
 
             fetch('?api=campaigns' + (id ? '&id=' + id : ''), {
-                method: method,
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
-                    loadCampaigns();
-                    showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
-                } else if (result.error) {
-                    showError(result.error);
-                }
-            })
-            .catch(error => {
-                showError('Bir hata oluştu: ' + error.message);
-            });
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+                        loadCampaigns();
+                        showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
+                    } else if (result.error) {
+                        showError(result.error);
+                    }
+                })
+                .catch(error => {
+                    showError('Bir hata oluştu: ' + error.message);
+                });
         }
 
         // Hata mesajı göster
@@ -602,7 +607,7 @@ if (isset($_GET['api'])) {
             document.getElementById('campaignId').value = campaign ? campaign.id : '';
             document.getElementById('campaignName').value = campaign ? campaign.name : '';
             document.getElementById('campaignDescription').value = campaign ? campaign.description : '';
-            
+
             new bootstrap.Modal(document.getElementById('campaignModal')).show();
         }
 
@@ -619,7 +624,9 @@ if (isset($_GET['api'])) {
         // Kampanya sil
         function deleteCampaign(id) {
             if (confirm('Bu kampanyayı silmek istediğinizden emin misiniz?')) {
-                fetch('?api=campaigns&id=' + id, {method: 'DELETE'})
+                fetch('?api=campaigns&id=' + id, {
+                        method: 'DELETE'
+                    })
                     .then(response => response.json())
                     .then(result => {
                         if (result.success) loadCampaigns();
@@ -632,7 +639,7 @@ if (isset($_GET['api'])) {
             const now = new Date();
             const start = new Date(startDate);
             const end = endDate ? new Date(endDate) : null;
-            
+
             if (now < start) return 'scheduled';
             if (!end || now <= end) return 'active';
             return 'ended';
@@ -643,7 +650,7 @@ if (isset($_GET['api'])) {
                 'scheduled': 'Planlandı',
                 'active': 'Aktif',
                 'ended': 'Bitti'
-            }[status];
+            } [status];
         }
 
         function formatDate(date) {
@@ -660,8 +667,19 @@ if (isset($_GET['api'])) {
                 .replace(/'/g, "&#039;");
         }
 
-        // Sayfa yüklendiğinde kampanyaları listele
-        document.addEventListener('DOMContentLoaded', loadCampaigns);
+        // Hızlı tracking URL oluştur
+        function generateNewTrackingUrl() {
+            const trackingId = 'quick_' + Date.now().toString(16);
+            const baseUrl = window.location.href.split('?')[0];
+            const trackingUrl = baseUrl + '?track=' + trackingId;
+            document.getElementById('quickTrackingUrl').textContent = trackingUrl;
+        }
+
+        // Sayfa yüklendiğinde ilk URL'i oluştur
+        document.addEventListener('DOMContentLoaded', () => {
+            generateNewTrackingUrl();
+            loadCampaigns();
+        });
     </script>
 </body>
 
