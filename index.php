@@ -386,6 +386,7 @@ if (isset($_GET['api'])) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 
@@ -635,6 +636,8 @@ if (isset($_GET['api'])) {
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
     <script>
         // Kopyalama fonksiyonları
         async function copyToClipboard(text, button) {
@@ -771,31 +774,47 @@ if (isset($_GET['api'])) {
                 pageLength: 25,
                 order: [
                     [4, 'desc']
-                ], // Oluşturma tarihine göre sırala
+                ],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
-                responsive: true,
-                autoWidth: true,
+                responsive: {
+                    details: {
+                        type: 'column',
+                        target: 0
+                    }
+                },
+                columnDefs: [{
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                }],
                 columns: [{
-                        data: 0
-                    }, // Kampanya Adı
+                        data: 0,
+                        responsivePriority: 1,
+                        className: 'dtr-control'
+                    },
                     {
-                        data: 1
-                    }, // Açıklama
+                        data: 1,
+                        responsivePriority: 2
+                    },
                     {
-                        data: 2
-                    }, // Takip Kodu
+                        data: 2,
+                        responsivePriority: 3
+                    },
                     {
-                        data: 3
-                    }, // Açılma
+                        data: 3,
+                        responsivePriority: 4
+                    },
                     {
-                        data: 4
-                    }, // Oluşturan / Tarih
+                        data: 4,
+                        responsivePriority: 5
+                    },
                     {
                         data: 5,
-                        orderable: false
-                    } // İşlemler
+                        orderable: false,
+                        responsivePriority: 1
+                    }
                 ]
             });
 
@@ -804,7 +823,10 @@ if (isset($_GET['api'])) {
             $(window).on('resize', function() {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(function() {
-                    campaignsTable.columns.adjust().responsive.recalc();
+                    if ($.fn.dataTable.isDataTable('#campaignsTable')) {
+                        campaignsTable.columns.adjust();
+                        campaignsTable.responsive.recalc();
+                    }
                 }, 250);
             });
         });
@@ -953,30 +975,46 @@ if (isset($_GET['api'])) {
                 pageLength: 25,
                 order: [
                     [5, 'desc']
-                ], // Açılma zamanına göre sırala
+                ],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
-                responsive: true,
-                autoWidth: true,
+                responsive: {
+                    details: {
+                        type: 'column',
+                        target: 0
+                    }
+                },
+                columnDefs: [{
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                }],
                 columns: [{
-                        data: 0
-                    }, // Takip Kodu
+                        data: 0,
+                        responsivePriority: 1,
+                        className: 'dtr-control'
+                    },
                     {
-                        data: 1
-                    }, // Kampanya
+                        data: 1,
+                        responsivePriority: 2
+                    },
                     {
-                        data: 2
-                    }, // IP Adresi
+                        data: 2,
+                        responsivePriority: 3
+                    },
                     {
-                        data: 3
-                    }, // Konum
+                        data: 3,
+                        responsivePriority: 4
+                    },
                     {
-                        data: 4
-                    }, // Tarayıcı
+                        data: 4,
+                        responsivePriority: 5
+                    },
                     {
-                        data: 5
-                    } // Açılma Zamanı
+                        data: 5,
+                        responsivePriority: 1
+                    }
                 ]
             });
 
@@ -985,7 +1023,10 @@ if (isset($_GET['api'])) {
             $(window).on('resize', function() {
                 clearTimeout(logsResizeTimer);
                 logsResizeTimer = setTimeout(function() {
-                    logsTable.columns.adjust().responsive.recalc();
+                    if ($.fn.dataTable.isDataTable('#logsTable')) {
+                        logsTable.columns.adjust();
+                        logsTable.responsive.recalc();
+                    }
                 }, 250);
             });
         });
