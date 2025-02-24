@@ -120,8 +120,53 @@ if (isset($_GET['api'])) {
 
     switch ($_GET['api']) {
         case 'campaigns':
-            $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
-            echo json_encode($stmt->fetchAll());
+            // Kampanya listesi
+            if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+                $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
+                echo json_encode($stmt->fetchAll());
+            }
+            // Yeni kampanya oluşturma
+            else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $data = json_decode(file_get_contents('php://input'), true);
+                $stmt = $pdo->prepare("
+                    INSERT INTO campaigns (name, description, tracking_prefix, start_date, end_date, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $data['name'],
+                    $data['description'],
+                    bin2hex(random_bytes(4)), // Rastgele tracking prefix
+                    $data['start_date'],
+                    $data['end_date'],
+                    $_SESSION['user_id']
+                ]);
+                echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+            }
+            // Kampanya güncelleme
+            else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+                $data = json_decode(file_get_contents('php://input'), true);
+                $stmt = $pdo->prepare("
+                    UPDATE campaigns 
+                    SET name = ?, description = ?, start_date = ?, end_date = ?
+                    WHERE id = ? AND created_by = ?
+                ");
+                $stmt->execute([
+                    $data['name'],
+                    $data['description'],
+                    $data['start_date'],
+                    $data['end_date'],
+                    $data['id'],
+                    $_SESSION['user_id']
+                ]);
+                echo json_encode(['success' => true]);
+            }
+            // Kampanya silme
+            else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+                $id = $_GET['id'];
+                $stmt = $pdo->prepare("DELETE FROM campaigns WHERE id = ? AND created_by = ?");
+                $stmt->execute([$id, $_SESSION['user_id']]);
+                echo json_encode(['success' => true]);
+            }
             break;
 
         case 'stats':
@@ -208,39 +253,37 @@ if (isset($_GET['api'])) {
         </div>
 
         <?php if (checkPermission('editor')): ?>
-            <!-- Şablonlar ve Kampanyalar -->
+            <!-- Kampanyalar -->
             <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title mb-3">
-                                <i class="bi bi-graph-up me-2"></i>Kampanyalar
-                            </h5>
-                            <div class="list-group">
-                                <?php
-                                $stmt = $pdo->query("
-                                SELECT *, 
-                                    CASE 
-                                        WHEN NOW() < start_date THEN 'scheduled'
-                                        WHEN NOW() BETWEEN start_date AND COALESCE(end_date, NOW()) THEN 'active'
-                                        ELSE 'ended'
-                                    END as status
-                                FROM campaigns 
-                                ORDER BY created_at DESC 
-                                LIMIT 5
-                            ");
-                                while ($campaign = $stmt->fetch()) {
-                                    echo '<div class="list-group-item">';
-                                    echo '<div class="d-flex w-100 justify-content-between">';
-                                    echo '<h6 class="mb-1">';
-                                    echo '<span class="campaign-status campaign-' . $campaign['status'] . '"></span>';
-                                    echo htmlspecialchars($campaign['name']) . '</h6>';
-                                    echo '<small class="text-muted">' . $campaign['total_opened'] . ' / ' . $campaign['total_sent'] . '</small>';
-                                    echo '</div>';
-                                    echo '<small class="text-muted">' . htmlspecialchars($campaign['description']) . '</small>';
-                                    echo '</div>';
-                                }
-                                ?>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title">
+                                    <i class="bi bi-graph-up me-2"></i>Kampanyalar
+                                </h5>
+                                <button class="btn btn-primary" onclick="showCampaignModal()">
+                                    <i class="bi bi-plus-lg me-1"></i>Yeni Kampanya
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Kampanya Adı</th>
+                                            <th>Açıklama</th>
+                                            <th>Tracking Prefix</th>
+                                            <th>Başlangıç</th>
+                                            <th>Bitiş</th>
+                                            <th>Açılma</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="campaignsTable">
+                                        <!-- JavaScript ile doldurulacak -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -324,6 +367,43 @@ if (isset($_GET['api'])) {
         </div>
     </div>
 
+    <!-- Kampanya Modal -->
+    <div class="modal fade" id="campaignModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Kampanya Yönetimi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="campaignForm">
+                        <input type="hidden" id="campaignId">
+                        <div class="mb-3">
+                            <label class="form-label">Kampanya Adı</label>
+                            <input type="text" class="form-control" id="campaignName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="campaignDescription"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Başlangıç Tarihi</label>
+                            <input type="datetime-local" class="form-control" id="campaignStartDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Bitiş Tarihi</label>
+                            <input type="datetime-local" class="form-control" id="campaignEndDate">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCampaign()">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
@@ -364,6 +444,134 @@ if (isset($_GET['api'])) {
             // Hata durumunda haritada nokta gösterme
         }
         ?>
+
+        // Kampanya listesini yükle
+        function loadCampaigns() {
+            fetch('?api=campaigns')
+                .then(response => response.json())
+                .then(campaigns => {
+                    const tbody = document.getElementById('campaignsTable');
+                    tbody.innerHTML = '';
+                    
+                    campaigns.forEach(campaign => {
+                        const status = getStatus(campaign.start_date, campaign.end_date);
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${escapeHtml(campaign.name)}</td>
+                                <td>${escapeHtml(campaign.description || '')}</td>
+                                <td><code>${campaign.tracking_prefix}</code></td>
+                                <td>${formatDate(campaign.start_date)}</td>
+                                <td>${campaign.end_date ? formatDate(campaign.end_date) : '-'}</td>
+                                <td>${campaign.total_opened} / ${campaign.total_sent}</td>
+                                <td><span class="badge campaign-${status}">${getStatusText(status)}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editCampaign(${campaign.id})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCampaign(${campaign.id})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        // Kampanya modalını göster
+        function showCampaignModal(campaign = null) {
+            document.getElementById('campaignId').value = campaign ? campaign.id : '';
+            document.getElementById('campaignName').value = campaign ? campaign.name : '';
+            document.getElementById('campaignDescription').value = campaign ? campaign.description : '';
+            document.getElementById('campaignStartDate').value = campaign ? campaign.start_date.slice(0, 16) : '';
+            document.getElementById('campaignEndDate').value = campaign && campaign.end_date ? campaign.end_date.slice(0, 16) : '';
+            
+            new bootstrap.Modal(document.getElementById('campaignModal')).show();
+        }
+
+        // Kampanya kaydet
+        function saveCampaign() {
+            const id = document.getElementById('campaignId').value;
+            const data = {
+                name: document.getElementById('campaignName').value,
+                description: document.getElementById('campaignDescription').value,
+                start_date: document.getElementById('campaignStartDate').value,
+                end_date: document.getElementById('campaignEndDate').value || null
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            if (id) data.id = id;
+
+            fetch('?api=campaigns' + (id ? '&id=' + id : ''), {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+                    loadCampaigns();
+                }
+            });
+        }
+
+        // Kampanya düzenle
+        function editCampaign(id) {
+            fetch('?api=campaigns')
+                .then(response => response.json())
+                .then(campaigns => {
+                    const campaign = campaigns.find(c => c.id === id);
+                    if (campaign) showCampaignModal(campaign);
+                });
+        }
+
+        // Kampanya sil
+        function deleteCampaign(id) {
+            if (confirm('Bu kampanyayı silmek istediğinizden emin misiniz?')) {
+                fetch('?api=campaigns&id=' + id, {method: 'DELETE'})
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) loadCampaigns();
+                    });
+            }
+        }
+
+        // Yardımcı fonksiyonlar
+        function getStatus(startDate, endDate) {
+            const now = new Date();
+            const start = new Date(startDate);
+            const end = endDate ? new Date(endDate) : null;
+            
+            if (now < start) return 'scheduled';
+            if (!end || now <= end) return 'active';
+            return 'ended';
+        }
+
+        function getStatusText(status) {
+            return {
+                'scheduled': 'Planlandı',
+                'active': 'Aktif',
+                'ended': 'Bitti'
+            }[status];
+        }
+
+        function formatDate(date) {
+            return new Date(date).toLocaleString('tr-TR');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Sayfa yüklendiğinde kampanyaları listele
+        document.addEventListener('DOMContentLoaded', loadCampaigns);
     </script>
 </body>
 
