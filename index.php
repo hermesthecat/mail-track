@@ -808,7 +808,6 @@ if (isset($_GET['api'])) {
         // Sayfa yüklendiğinde ilk URL'i oluştur
         document.addEventListener('DOMContentLoaded', () => {
             generateNewTrackingUrl();
-            loadCampaigns();
         });
 
         // DataTables başlat
