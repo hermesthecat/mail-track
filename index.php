@@ -318,18 +318,8 @@ if (isset($_GET['api'])) {
             </div>
         </div>
 
-        <!-- Harita -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="bi bi-geo-alt me-2"></i>Coğrafi Dağılım
-                </h5>
-                <div id="map"></div>
-            </div>
-        </div>
-
         <!-- Log Tablosu -->
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title mb-3">
                     <i class="bi bi-clock-history me-2"></i>Son E-posta Açılmaları
@@ -338,7 +328,7 @@ if (isset($_GET['api'])) {
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Tracking ID</th>
+                                <th>Takip Kodu</th>
                                 <th>IP Adresi</th>
                                 <th>Konum</th>
                                 <th>Tarayıcı</th>
@@ -371,6 +361,16 @@ if (isset($_GET['api'])) {
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- Harita -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="bi bi-geo-alt me-2"></i>Coğrafi Dağılım
+                </h5>
+                <div id="map"></div>
             </div>
         </div>
     </div>
