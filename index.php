@@ -186,6 +186,73 @@ if (isset($_GET['api'])) {
             ];
             echo json_encode($stats);
             break;
+
+        case 'logs':
+            // DataTables parametreleri
+            $draw = isset($_GET['draw']) ? intval($_GET['draw']) : 1;
+            $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
+            $length = isset($_GET['length']) ? intval($_GET['length']) : 10;
+            $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
+            
+            // Arama koşulu
+            $searchCondition = "";
+            $params = [];
+            if ($search) {
+                $searchCondition = " WHERE l.tracking_id LIKE ? OR l.ip_address LIKE ? OR g.city LIKE ? OR g.country LIKE ? OR c.name LIKE ?";
+                $searchParam = "%$search%";
+                $params = [$searchParam, $searchParam, $searchParam, $searchParam, $searchParam];
+            }
+
+            // Toplam kayıt sayısı
+            $totalQuery = "SELECT COUNT(*) FROM email_logs l";
+            $total = $pdo->query($totalQuery)->fetchColumn();
+
+            // Filtrelenmiş kayıt sayısı
+            $filteredQuery = "
+                SELECT COUNT(*) 
+                FROM email_logs l 
+                LEFT JOIN geo_locations g ON l.id = g.log_id 
+                LEFT JOIN campaigns c ON SUBSTRING(l.tracking_id, 1, 8) = c.tracking_prefix
+                $searchCondition
+            ";
+            $stmt = $pdo->prepare($filteredQuery);
+            if ($search) $stmt->execute($params);
+            else $stmt->execute();
+            $filtered = $stmt->fetchColumn();
+
+            // Kayıtları getir
+            $query = "
+                SELECT l.*, g.country, g.city, c.name as campaign_name 
+                FROM email_logs l 
+                LEFT JOIN geo_locations g ON l.id = g.log_id 
+                LEFT JOIN campaigns c ON SUBSTRING(l.tracking_id, 1, 8) = c.tracking_prefix
+                $searchCondition
+                ORDER BY l.opened_at DESC 
+                LIMIT $start, $length
+            ";
+            $stmt = $pdo->prepare($query);
+            if ($search) $stmt->execute($params);
+            else $stmt->execute();
+            $data = [];
+            
+            while ($row = $stmt->fetch()) {
+                $data[] = [
+                    "<span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span>",
+                    $row['campaign_name'] ? "<span class='badge bg-info'>" . htmlspecialchars($row['campaign_name']) . "</span>" : "<span class='badge bg-secondary'>Hızlı Takip</span>",
+                    htmlspecialchars($row['ip_address']),
+                    $row['city'] ? htmlspecialchars($row['city'] . ', ' . $row['country']) : '-',
+                    "<small class='text-muted'>" . htmlspecialchars($row['user_agent']) . "</small>",
+                    htmlspecialchars(date('d.m.Y H:i:s', strtotime($row['opened_at'])))
+                ];
+            }
+
+            echo json_encode([
+                'draw' => $draw,
+                'recordsTotal' => $total,
+                'recordsFiltered' => $filtered,
+                'data' => $data
+            ]);
+            break;
     }
     exit;
 }
@@ -203,6 +270,8 @@ if (isset($_GET['api'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 
 <body>
@@ -325,7 +394,7 @@ if (isset($_GET['api'])) {
                     <i class="bi bi-clock-history me-2"></i>Son E-posta Açılmaları
                 </h5>
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="logsTable">
                         <thead>
                             <tr>
                                 <th>Takip Kodu</th>
@@ -336,37 +405,6 @@ if (isset($_GET['api'])) {
                                 <th>Açılma Zamanı</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php
-                            try {
-                                $stmt = $pdo->query("
-                                    SELECT l.*, g.country, g.city, c.name as campaign_name 
-                                    FROM email_logs l 
-                                    LEFT JOIN geo_locations g ON l.id = g.log_id 
-                                    LEFT JOIN campaigns c ON SUBSTRING(l.tracking_id, 1, 8) = c.tracking_prefix
-                                    ORDER BY l.opened_at DESC 
-                                    LIMIT 50
-                                ");
-                                $hasRows = false;
-                                while ($row = $stmt->fetch()) {
-                                    $hasRows = true;
-                                    echo "<tr>";
-                                    echo "<td><span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span></td>";
-                                    echo "<td>" . ($row['campaign_name'] ? "<span class='badge bg-info'>" . htmlspecialchars($row['campaign_name']) . "</span>" : "<span class='badge bg-secondary'>Hızlı Takip</span>") . "</td>";
-                                    echo "<td>" . htmlspecialchars($row['ip_address']) . "</td>";
-                                    echo "<td>" . ($row['city'] ? htmlspecialchars($row['city'] . ', ' . $row['country']) : '-') . "</td>";
-                                    echo "<td><small class='text-muted'>" . htmlspecialchars($row['user_agent']) . "</small></td>";
-                                    echo "<td>" . htmlspecialchars(date('d.m.Y H:i:s', strtotime($row['opened_at']))) . "</td>";
-                                    echo "</tr>";
-                                }
-                                if (!$hasRows) {
-                                    echo "<tr><td colspan='6' class='text-center text-muted py-4'><i class='bi bi-inbox me-2'></i>Henüz e-posta açılması kaydedilmedi</td></tr>";
-                                }
-                            } catch (PDOException $e) {
-                                echo "<tr><td colspan='6' class='text-center text-muted py-4'><i class='bi bi-exclamation-triangle me-2'></i>Veri çekme hatası oluştu</td></tr>";
-                            }
-                            ?>
-                        </tbody>
                     </table>
                 </div>
             </div>
@@ -446,6 +484,8 @@ if (isset($_GET['api'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script>
         // Kopyalama fonksiyonları
         async function copyToClipboard(text, button) {
@@ -759,6 +799,28 @@ if (isset($_GET['api'])) {
         document.addEventListener('DOMContentLoaded', () => {
             generateNewTrackingUrl();
             loadCampaigns();
+        });
+
+        // DataTables başlat
+        $(document).ready(function() {
+            $('#logsTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: '?api=logs',
+                pageLength: 25,
+                order: [[5, 'desc']], // Açılma zamanına göre sırala
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
+                },
+                columns: [
+                    { data: 0 }, // Takip Kodu
+                    { data: 1 }, // Kampanya
+                    { data: 2 }, // IP Adresi
+                    { data: 3 }, // Konum
+                    { data: 4 }, // Tarayıcı
+                    { data: 5 }  // Açılma Zamanı
+                ]
+            });
         });
     </script>
 </body>
