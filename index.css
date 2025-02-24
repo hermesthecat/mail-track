@@ -77,6 +77,52 @@ body {
     margin-top: 0.5rem;
 }
 
+/* Hızlı Takip URL Kartı */
+.tracking-url-card .url-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-color);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.tracking-url-card code {
+    flex: 1;
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    word-break: break-all;
+    padding: 0.5rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.tracking-url-card .copy-btn {
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tracking-url-card .copy-btn:hover {
+    background: var(--bg-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.tracking-url-card .copy-btn.copied {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
 /* Butonlar ve Rozetler */
 .btn-outline-primary {
     color: var(--primary-color);
@@ -117,6 +163,15 @@ body {
 
     .campaigns-table td:nth-child(2) {
         max-width: 200px;
+    }
+
+    .tracking-url-card .url-display {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .tracking-url-card .copy-btn {
+        width: 100%;
     }
 }
 
