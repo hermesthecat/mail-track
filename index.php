@@ -691,8 +691,18 @@ if (isset($_GET['api'])) {
             fetch('?api=campaigns')
                 .then(response => response.json())
                 .then(campaigns => {
-                    const campaign = campaigns.find(c => c.id === id);
-                    if (campaign) showCampaignModal(campaign);
+                    const campaign = campaigns.find(c => c.id == id);
+                    if (campaign) {
+                        document.getElementById('campaignId').value = campaign.id;
+                        document.getElementById('campaignName').value = campaign.name;
+                        document.getElementById('campaignDescription').value = campaign.description || '';
+                        new bootstrap.Modal(document.getElementById('campaignModal')).show();
+                    } else {
+                        showError('Kampanya bulunamadı!');
+                    }
+                })
+                .catch(error => {
+                    showError('Kampanya bilgileri alınırken hata oluştu: ' + error.message);
                 });
         }
 
