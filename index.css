@@ -165,3 +165,76 @@ body {
         width: 100%;
     }
 }
+
+/* DataTables Stilleri */
+#campaignsTable_wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#campaignsTable_wrapper .table-responsive {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+#campaignsTable {
+    width: 100% !important;
+    margin: 0 !important;
+    table-layout: fixed;
+}
+
+/* Sütun genişlikleri */
+#campaignsTable thead th,
+#campaignsTable tbody td {
+    white-space: normal;
+    word-wrap: break-word;
+    padding: 12px 8px;
+}
+
+/* Sütun genişlik ayarları */
+#campaignsTable th:nth-child(1), /* Kampanya Adı */
+#campaignsTable td:nth-child(1) {
+    width: 20%;
+}
+
+#campaignsTable th:nth-child(2), /* Açıklama */
+#campaignsTable td:nth-child(2) {
+    width: 30%;
+}
+
+#campaignsTable th:nth-child(3), /* Takip Kodu */
+#campaignsTable td:nth-child(3) {
+    width: 15%;
+}
+
+#campaignsTable th:nth-child(4), /* Açılma */
+#campaignsTable td:nth-child(4) {
+    width: 10%;
+}
+
+#campaignsTable th:nth-child(5), /* Oluşturan/Tarih */
+#campaignsTable td:nth-child(5) {
+    width: 15%;
+}
+
+#campaignsTable th:nth-child(6), /* İşlemler */
+#campaignsTable td:nth-child(6) {
+    width: 10%;
+    text-align: center;
+}
+
+/* Mobil görünüm için düzenleme */
+@media (max-width: 992px) {
+    #campaignsTable {
+        table-layout: auto;
+    }
+    
+    #campaignsTable thead th,
+    #campaignsTable tbody td {
+        white-space: normal;
+        min-width: 120px;
+    }
+}
