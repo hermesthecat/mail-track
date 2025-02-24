@@ -36,8 +36,6 @@ CREATE TABLE IF NOT EXISTS campaigns (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     tracking_prefix VARCHAR(32) NOT NULL,
-    start_date DATETIME,
-    end_date DATETIME,
     total_sent INT DEFAULT 0,
     total_opened INT DEFAULT 0,
     created_by INT,

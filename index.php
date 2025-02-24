@@ -127,38 +127,46 @@ if (isset($_GET['api'])) {
             }
             // Yeni kampanya oluşturma
             else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $data = json_decode(file_get_contents('php://input'), true);
-                $stmt = $pdo->prepare("
-                    INSERT INTO campaigns (name, description, tracking_prefix, start_date, end_date, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([
-                    $data['name'],
-                    $data['description'],
-                    bin2hex(random_bytes(4)), // Rastgele tracking prefix
-                    $data['start_date'],
-                    $data['end_date'],
-                    $_SESSION['user_id']
-                ]);
-                echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+                try {
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    
+                    $stmt = $pdo->prepare("
+                        INSERT INTO campaigns (name, description, tracking_prefix, created_by)
+                        VALUES (?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $data['name'],
+                        $data['description'],
+                        bin2hex(random_bytes(4)), // Rastgele tracking prefix
+                        $_SESSION['user_id']
+                    ]);
+                    echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $e->getMessage()]);
+                }
             }
             // Kampanya güncelleme
             else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-                $data = json_decode(file_get_contents('php://input'), true);
-                $stmt = $pdo->prepare("
-                    UPDATE campaigns 
-                    SET name = ?, description = ?, start_date = ?, end_date = ?
-                    WHERE id = ? AND created_by = ?
-                ");
-                $stmt->execute([
-                    $data['name'],
-                    $data['description'],
-                    $data['start_date'],
-                    $data['end_date'],
-                    $data['id'],
-                    $_SESSION['user_id']
-                ]);
-                echo json_encode(['success' => true]);
+                try {
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    
+                    $stmt = $pdo->prepare("
+                        UPDATE campaigns 
+                        SET name = ?, description = ?
+                        WHERE id = ? AND created_by = ?
+                    ");
+                    $stmt->execute([
+                        $data['name'],
+                        $data['description'],
+                        $data['id'],
+                        $_SESSION['user_id']
+                    ]);
+                    echo json_encode(['success' => true]);
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $e->getMessage()]);
+                }
             }
             // Kampanya silme
             else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
@@ -221,7 +229,7 @@ if (isset($_GET['api'])) {
                 $total_opens = $pdo->query("SELECT COUNT(*) FROM email_logs")->fetchColumn();
                 $unique_ips = $pdo->query("SELECT COUNT(DISTINCT ip_address) FROM email_logs")->fetchColumn();
                 $today_opens = $pdo->query("SELECT COUNT(*) FROM email_logs WHERE DATE(opened_at) = CURDATE()")->fetchColumn();
-                $active_campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns WHERE NOW() BETWEEN start_date AND COALESCE(end_date, NOW())")->fetchColumn();
+                $active_campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns")->fetchColumn();
             } catch (PDOException $e) {
                 $total_opens = $unique_ips = $today_opens = $active_campaigns = 0;
             }
@@ -273,10 +281,7 @@ if (isset($_GET['api'])) {
                                             <th>Kampanya Adı</th>
                                             <th>Açıklama</th>
                                             <th>Tracking Prefix</th>
-                                            <th>Başlangıç</th>
-                                            <th>Bitiş</th>
                                             <th>Açılma</th>
-                                            <th>Durum</th>
                                             <th>İşlemler</th>
                                         </tr>
                                     </thead>
@@ -386,14 +391,6 @@ if (isset($_GET['api'])) {
                             <label class="form-label">Açıklama</label>
                             <textarea class="form-control" id="campaignDescription"></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Başlangıç Tarihi</label>
-                            <input type="datetime-local" class="form-control" id="campaignStartDate" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Bitiş Tarihi</label>
-                            <input type="datetime-local" class="form-control" id="campaignEndDate">
-                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -454,16 +451,12 @@ if (isset($_GET['api'])) {
                     tbody.innerHTML = '';
                     
                     campaigns.forEach(campaign => {
-                        const status = getStatus(campaign.start_date, campaign.end_date);
                         tbody.innerHTML += `
                             <tr>
                                 <td>${escapeHtml(campaign.name)}</td>
                                 <td>${escapeHtml(campaign.description || '')}</td>
                                 <td><code>${campaign.tracking_prefix}</code></td>
-                                <td>${formatDate(campaign.start_date)}</td>
-                                <td>${campaign.end_date ? formatDate(campaign.end_date) : '-'}</td>
                                 <td>${campaign.total_opened} / ${campaign.total_sent}</td>
-                                <td><span class="badge campaign-${status}">${getStatusText(status)}</span></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary" onclick="editCampaign(${campaign.id})">
                                         <i class="bi bi-pencil"></i>
@@ -478,25 +471,18 @@ if (isset($_GET['api'])) {
                 });
         }
 
-        // Kampanya modalını göster
-        function showCampaignModal(campaign = null) {
-            document.getElementById('campaignId').value = campaign ? campaign.id : '';
-            document.getElementById('campaignName').value = campaign ? campaign.name : '';
-            document.getElementById('campaignDescription').value = campaign ? campaign.description : '';
-            document.getElementById('campaignStartDate').value = campaign ? campaign.start_date.slice(0, 16) : '';
-            document.getElementById('campaignEndDate').value = campaign && campaign.end_date ? campaign.end_date.slice(0, 16) : '';
-            
-            new bootstrap.Modal(document.getElementById('campaignModal')).show();
-        }
-
         // Kampanya kaydet
         function saveCampaign() {
+            const form = document.getElementById('campaignForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
             const id = document.getElementById('campaignId').value;
             const data = {
                 name: document.getElementById('campaignName').value,
-                description: document.getElementById('campaignDescription').value,
-                start_date: document.getElementById('campaignStartDate').value,
-                end_date: document.getElementById('campaignEndDate').value || null
+                description: document.getElementById('campaignDescription').value
             };
 
             const method = id ? 'PUT' : 'POST';
@@ -512,8 +498,51 @@ if (isset($_GET['api'])) {
                 if (result.success) {
                     bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
                     loadCampaigns();
+                    showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
+                } else if (result.error) {
+                    showError(result.error);
                 }
+            })
+            .catch(error => {
+                showError('Bir hata oluştu: ' + error.message);
             });
+        }
+
+        // Hata mesajı göster
+        function showError(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.modal-body').insertBefore(alertDiv, document.getElementById('campaignForm'));
+        }
+
+        // Başarı mesajı göster
+        function showSuccess(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
+        // Kampanya modalını göster
+        function showCampaignModal(campaign = null) {
+            // Önceki hata mesajlarını temizle
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => alert.remove());
+
+            document.getElementById('campaignId').value = campaign ? campaign.id : '';
+            document.getElementById('campaignName').value = campaign ? campaign.name : '';
+            document.getElementById('campaignDescription').value = campaign ? campaign.description : '';
+            
+            new bootstrap.Modal(document.getElementById('campaignModal')).show();
         }
 
         // Kampanya düzenle

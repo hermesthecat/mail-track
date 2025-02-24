@@ -116,26 +116,6 @@ body {
     margin-top: 20px;
 }
 
-.campaign-status {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-}
-
-.campaign-active {
-    background-color: #10b981;
-}
-
-.campaign-ended {
-    background-color: #ef4444;
-}
-
-.campaign-scheduled {
-    background-color: #f59e0b;
-}
-
 /* Kampanya tablosu stilleri */
 .table th {
     white-space: nowrap;
