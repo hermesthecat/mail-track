@@ -120,61 +120,84 @@ if (isset($_GET['api'])) {
 
     switch ($_GET['api']) {
         case 'campaigns':
-            // Kampanya listesi
-            if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-                $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
-                echo json_encode($stmt->fetchAll());
-            }
-            // Yeni kampanya oluşturma
-            else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                try {
-                    $data = json_decode(file_get_contents('php://input'), true);
-
-                    $stmt = $pdo->prepare("
-                        INSERT INTO campaigns (name, description, tracking_prefix, created_by)
-                        VALUES (?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $data['name'],
-                        $data['description'],
-                        bin2hex(random_bytes(4)), // Rastgele tracking prefix
-                        $_SESSION['user_id']
-                    ]);
-                    echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
-                } catch (Exception $e) {
-                    http_response_code(400);
-                    echo json_encode(['error' => $e->getMessage()]);
+            // Tekil kampanya getirme
+            if (isset($_GET['id'])) {
+                $stmt = $pdo->prepare("SELECT * FROM campaigns WHERE id = ?");
+                $stmt->execute([$_GET['id']]);
+                $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($campaign) {
+                    echo json_encode($campaign);
+                } else {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Kampanya bulunamadı']);
                 }
+                exit;
             }
-            // Kampanya güncelleme
-            else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-                try {
-                    $data = json_decode(file_get_contents('php://input'), true);
 
-                    $stmt = $pdo->prepare("
-                        UPDATE campaigns 
-                        SET name = ?, description = ?
-                        WHERE id = ? AND created_by = ?
-                    ");
-                    $stmt->execute([
-                        $data['name'],
-                        $data['description'],
-                        $data['id'],
-                        $_SESSION['user_id']
-                    ]);
-                    echo json_encode(['success' => true]);
-                } catch (Exception $e) {
-                    http_response_code(400);
-                    echo json_encode(['error' => $e->getMessage()]);
-                }
+            // DataTables parametreleri
+            $draw = isset($_GET['draw']) ? intval($_GET['draw']) : 1;
+            $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
+            $length = isset($_GET['length']) ? intval($_GET['length']) : 10;
+            $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
+
+            // Arama koşulu
+            $searchCondition = "";
+            $params = [];
+            if ($search) {
+                $searchCondition = " WHERE name LIKE ? OR description LIKE ? OR tracking_prefix LIKE ?";
+                $searchParam = "%$search%";
+                $params = [$searchParam, $searchParam, $searchParam];
             }
-            // Kampanya silme
-            else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
-                $id = $_GET['id'];
-                $stmt = $pdo->prepare("DELETE FROM campaigns WHERE id = ? AND created_by = ?");
-                $stmt->execute([$id, $_SESSION['user_id']]);
-                echo json_encode(['success' => true]);
+
+            // Toplam kayıt sayısı
+            $total = $pdo->query("SELECT COUNT(*) FROM campaigns")->fetchColumn();
+
+            // Filtrelenmiş kayıt sayısı
+            $filteredQuery = "SELECT COUNT(*) FROM campaigns $searchCondition";
+            $stmt = $pdo->prepare($filteredQuery);
+            if ($search) $stmt->execute($params);
+            else $stmt->execute();
+            $filtered = $stmt->fetchColumn();
+
+            // Kayıtları getir
+            $query = "
+                SELECT c.*, a.username as created_by_username 
+                FROM campaigns c 
+                LEFT JOIN admins a ON c.created_by = a.id
+                $searchCondition
+                ORDER BY c.created_at DESC 
+                LIMIT $start, $length
+            ";
+            $stmt = $pdo->prepare($query);
+            if ($search) $stmt->execute($params);
+            else $stmt->execute();
+            $data = [];
+
+            while ($row = $stmt->fetch()) {
+                $data[] = [
+                    "<span class='text-primary fw-bold'>" . htmlspecialchars($row['name']) . "</span>",
+                    $row['description'] ? htmlspecialchars($row['description']) : '<span class="text-muted">-</span>',
+                    "<code style='cursor: pointer' onclick='showTrackingCode(\"" . $row['tracking_prefix'] . "\")'>" . $row['tracking_prefix'] . "</code>",
+                    "<span class='badge bg-info'>" . $row['total_opened'] . " / " . $row['total_sent'] . "</span>",
+                    "<small class='text-muted'>" . htmlspecialchars($row['created_by_username']) . "<br>" . date('d.m.Y H:i', strtotime($row['created_at'])) . "</small>",
+                    "<div class='btn-group'>
+                        <button class='btn btn-sm btn-outline-primary' onclick='editCampaign(" . $row['id'] . ")'>
+                            <i class='bi bi-pencil'></i>
+                        </button>
+                        <button class='btn btn-sm btn-outline-danger' onclick='deleteCampaign(" . $row['id'] . ")'>
+                            <i class='bi bi-trash'></i>
+                        </button>
+                    </div>"
+                ];
             }
+
+            echo json_encode([
+                'draw' => $draw,
+                'recordsTotal' => $total,
+                'recordsFiltered' => $filtered,
+                'data' => $data
+            ]);
             break;
 
         case 'stats':
@@ -344,19 +367,17 @@ if (isset($_GET['api'])) {
                                 </button>
                             </div>
                             <div class="table-responsive">
-                                <table class="table">
+                                <table class="table" id="campaignsTable">
                                     <thead>
                                         <tr>
                                             <th>Kampanya Adı</th>
                                             <th>Açıklama</th>
-                                            <th>Takip Kodu (Tıklayın)</th>
+                                            <th>Takip Kodu</th>
                                             <th>Açılma</th>
+                                            <th>Oluşturan / Tarih</th>
                                             <th>İşlemler</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="campaignsTable">
-                                        <!-- JavaScript ile doldurulacak -->
-                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -613,44 +634,31 @@ if (isset($_GET['api'])) {
         }
         ?>
 
-        // Kampanya listesini yükle
-        function loadCampaigns() {
-            fetch('?api=campaigns')
-                .then(response => response.json())
-                .then(campaigns => {
-                    const tbody = document.getElementById('campaignsTable');
-                    tbody.innerHTML = '';
+        // DataTables başlat
+        $(document).ready(function() {
+            $('#campaignsTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: '?api=campaigns',
+                pageLength: 25,
+                order: [[4, 'desc']], // Oluşturma tarihine göre sırala
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
+                },
+                columns: [
+                    { data: 0 }, // Kampanya Adı
+                    { data: 1 }, // Açıklama
+                    { data: 2 }, // Takip Kodu
+                    { data: 3 }, // Açılma
+                    { data: 4 }, // Oluşturan / Tarih
+                    { data: 5, orderable: false } // İşlemler
+                ]
+            });
+        });
 
-                    if (campaigns.length === 0) {
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox me-2"></i>Henüz kampanya bulunmuyor
-                                </td>
-                            </tr>
-                        `;
-                        return;
-                    }
-
-                    campaigns.forEach(campaign => {
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${escapeHtml(campaign.name)}</td>
-                                <td>${escapeHtml(campaign.description || '')}</td>
-                                <td><code style="cursor: pointer" onclick="showTrackingCode('${campaign.tracking_prefix}')">${campaign.tracking_prefix}</code></td>
-                                <td>${campaign.total_opened} / ${campaign.total_sent}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editCampaign(${campaign.id})">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCampaign(${campaign.id})">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                });
+        // Kampanya işlemleri sonrası tabloyu yenile
+        function refreshCampaignsTable() {
+            $('#campaignsTable').DataTable().ajax.reload();
         }
 
         // Kampanya kaydet
@@ -671,25 +679,25 @@ if (isset($_GET['api'])) {
             if (id) data.id = id;
 
             fetch('?api=campaigns' + (id ? '&id=' + id : ''), {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
-                        loadCampaigns();
-                        showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
-                    } else if (result.error) {
-                        showError(result.error);
-                    }
-                })
-                .catch(error => {
-                    showError('Bir hata oluştu: ' + error.message);
-                });
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+                    refreshCampaignsTable();
+                    showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
+                } else if (result.error) {
+                    showError(result.error);
+                }
+            })
+            .catch(error => {
+                showError('Bir hata oluştu: ' + error.message);
+            });
         }
 
         // Hata mesajı göster
@@ -731,18 +739,17 @@ if (isset($_GET['api'])) {
 
         // Kampanya düzenle
         function editCampaign(id) {
-            fetch('?api=campaigns')
+            fetch('?api=campaigns&id=' + id)
                 .then(response => response.json())
-                .then(campaigns => {
-                    const campaign = campaigns.find(c => c.id == id);
-                    if (campaign) {
-                        document.getElementById('campaignId').value = campaign.id;
-                        document.getElementById('campaignName').value = campaign.name;
-                        document.getElementById('campaignDescription').value = campaign.description || '';
-                        new bootstrap.Modal(document.getElementById('campaignModal')).show();
-                    } else {
-                        showError('Kampanya bulunamadı!');
+                .then(campaign => {
+                    if (campaign.error) {
+                        showError(campaign.error);
+                        return;
                     }
+                    document.getElementById('campaignId').value = campaign.id;
+                    document.getElementById('campaignName').value = campaign.name;
+                    document.getElementById('campaignDescription').value = campaign.description || '';
+                    new bootstrap.Modal(document.getElementById('campaignModal')).show();
                 })
                 .catch(error => {
                     showError('Kampanya bilgileri alınırken hata oluştu: ' + error.message);
@@ -753,12 +760,15 @@ if (isset($_GET['api'])) {
         function deleteCampaign(id) {
             if (confirm('Bu kampanyayı silmek istediğinizden emin misiniz?')) {
                 fetch('?api=campaigns&id=' + id, {
-                        method: 'DELETE'
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) loadCampaigns();
-                    });
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        refreshCampaignsTable();
+                        showSuccess('Kampanya başarıyla silindi.');
+                    }
+                });
             }
         }
 
