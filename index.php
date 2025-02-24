@@ -122,6 +122,37 @@ if (isset($_GET['api'])) {
         case 'campaigns':
             // Tekil kampanya getirme
             if (isset($_GET['id'])) {
+                if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+                    $stmt = $pdo->prepare("DELETE FROM campaigns WHERE id = ? AND created_by = ?");
+                    $stmt->execute([$_GET['id'], $_SESSION['user_id']]);
+                    echo json_encode(['success' => true]);
+                    exit;
+                }
+
+                if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+                    try {
+                        $data = json_decode(file_get_contents('php://input'), true);
+                        $stmt = $pdo->prepare("
+                            UPDATE campaigns 
+                            SET name = ?, description = ?
+                            WHERE id = ? AND created_by = ?
+                        ");
+                        $stmt->execute([
+                            $data['name'],
+                            $data['description'],
+                            $data['id'],
+                            $_SESSION['user_id']
+                        ]);
+                        echo json_encode(['success' => true]);
+                        exit;
+                    } catch (Exception $e) {
+                        http_response_code(400);
+                        echo json_encode(['error' => $e->getMessage()]);
+                        exit;
+                    }
+                }
+
+                // GET metodu için kampanya bilgilerini getir
                 $stmt = $pdo->prepare("SELECT * FROM campaigns WHERE id = ?");
                 $stmt->execute([$_GET['id']]);
                 $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -133,6 +164,30 @@ if (isset($_GET['api'])) {
                     echo json_encode(['error' => 'Kampanya bulunamadı']);
                 }
                 exit;
+            }
+
+            // Yeni kampanya oluşturma
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                try {
+                    $data = json_decode(file_get_contents('php://input'), true);
+                    
+                    $stmt = $pdo->prepare("
+                        INSERT INTO campaigns (name, description, tracking_prefix, created_by)
+                        VALUES (?, ?, ?, ?)
+                    ");
+                    $stmt->execute([
+                        $data['name'],
+                        $data['description'],
+                        bin2hex(random_bytes(4)), // Rastgele tracking prefix
+                        $_SESSION['user_id']
+                    ]);
+                    echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+                    exit;
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['error' => $e->getMessage()]);
+                    exit;
+                }
             }
 
             // DataTables parametreleri
