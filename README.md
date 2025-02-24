@@ -15,6 +15,9 @@ E-posta takip sistemi - E-postaların açılma durumunu ve coğrafi konumunu tak
   - Şehir ve ülke bazlı takip
   - Harita üzerinde görselleştirme
 - 📱 Mobil uyumlu arayüz
+  - Responsive tasarım
+  - DataTables entegrasyonu
+  - Dinamik tablo yapısı
 - 🔒 Rol tabanlı yetkilendirme sistemi
   - Admin: Tam yetki
   - Editor: Kampanya yönetimi
@@ -33,15 +36,14 @@ E-posta takip sistemi - E-postaların açılma durumunu ve coğrafi konumunu tak
 
 - PHP 7.4 veya üzeri
 - MySQL 5.7 veya üzeri
-- Composer
 - Web sunucusu (Apache/Nginx)
 
 ### Adımlar
 
 1. Projeyi klonlayın:
 ```bash
-git clone https://github.com/username/mail-tracker.git
-cd mail-tracker
+git clone https://github.com/hermesthecat/mail-track.git
+cd mail-track
 ```
 
 2. Veritabanını oluşturun:
@@ -66,41 +68,13 @@ TELEGRAM_CHAT_ID=your_chat_id
 IPAPI_KEY=your_ipapi_key
 ```
 
-4. Bağımlılıkları yükleyin:
-```bash
-composer install
-```
-
-5. Web sunucusunu yapılandırın:
-
-Apache için (.htaccess):
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php [QSA,L]
-```
-
-Nginx için:
-```nginx
-location / {
-    try_files $uri $uri/ /index.php?$query_string;
-}
-```
-
-6. Dizin izinlerini ayarlayın:
-```bash
-chmod 755 -R *
-chmod 777 -R logs/
-```
-
 ### İlk Kullanıcı
 
 Varsayılan admin kullanıcısı:
 - Kullanıcı adı: admin
 - Şifre: admin123
 
-İlk girişten sonra şifrenizi değiştirmeyi unutmayın!
+⚠️ İlk girişten sonra şifrenizi değiştirmeyi unutmayın!
 
 ## Kullanım
 
@@ -122,11 +96,16 @@ Varsayılan admin kullanıcısı:
 
 ## Güvenlik
 
-- SQL injection koruması
-- XSS koruması
-- CSRF koruması
-- Rol tabanlı yetkilendirme
-- Şifreleme ve hash kullanımı
+- Veri Güvenliği
+  - SQL injection koruması (PDO prepared statements)
+  - XSS koruması (HTML escaping)
+  - CSRF koruması (token doğrulama)
+  - Güvenli şifre hash'leme (password_hash)
+
+- Erişim Kontrolü
+  - Rol tabanlı yetkilendirme sistemi
+  - Session yönetimi ve doğrulama
+  - IP bazlı erişim kısıtlama desteği
 
 ## Lisans
 
