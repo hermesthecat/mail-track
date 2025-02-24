@@ -311,7 +311,7 @@ if (isset($_GET['api'])) {
                 </div>
                 <div class="url-display mt-3">
                     <code id="quickTrackingUrl"></code>
-                    <button class="copy-btn" onclick="copyUrl(this)">
+                    <button class="copy-btn" onclick="copyUrl(this)" title="Kopyala">
                         <i class="bi bi-clipboard me-1"></i>Kopyala
                     </button>
                 </div>
@@ -415,18 +415,18 @@ if (isset($_GET['api'])) {
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">1x1 Görünmez Piksel</label>
-                        <div class="code-block">
-                            <pre id="invisibleCode" class="bg-light p-3 rounded"></pre>
-                            <button class="copy-btn" onclick="copyCode('invisibleCode')">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="invisibleCode" readonly>
+                            <button class="btn btn-primary" onclick="copyCode('invisibleCode')" title="Kopyala">
                                 <i class="bi bi-clipboard me-1"></i>Kopyala
                             </button>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Görünür Logo/İmza</label>
-                        <div class="code-block">
-                            <pre id="visibleCode" class="bg-light p-3 rounded"></pre>
-                            <button class="copy-btn" onclick="copyCode('visibleCode')">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="visibleCode" readonly>
+                            <button class="btn btn-primary" onclick="copyCode('visibleCode')" title="Kopyala">
                                 <i class="bi bi-clipboard me-1"></i>Kopyala
                             </button>
                         </div>
@@ -439,14 +439,102 @@ if (isset($_GET['api'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        function copyUrl(button) {
-            const urlText = button.parentElement.textContent.trim();
-            navigator.clipboard.writeText(urlText).then(() => {
+        // Kopyalama fonksiyonları
+        async function copyToClipboard(text, button) {
+            try {
+                // Önce modern API'yi dene
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    // Alternatif yöntem
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+
+                    try {
+                        document.execCommand('copy');
+                        textArea.remove();
+                    } catch (err) {
+                        console.error('Kopyalama hatası:', err);
+                        textArea.remove();
+                        throw new Error('Kopyalama başarısız oldu');
+                    }
+                }
+
+                // Başarılı kopyalama geri bildirimi
+                const originalHtml = button.innerHTML;
                 button.innerHTML = '<i class="bi bi-check2 me-1"></i>Kopyalandı';
+                button.disabled = true;
+                button.classList.add('copied');
+
                 setTimeout(() => {
-                    button.innerHTML = '<i class="bi bi-clipboard me-1"></i>Kopyala';
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                    button.classList.remove('copied');
                 }, 2000);
-            });
+            } catch (err) {
+                console.error('Kopyalama hatası:', err);
+                // Kullanıcıya manuel kopyalama talimatı göster
+                alert('Otomatik kopyalama başarısız oldu. Lütfen metni seçip Ctrl+C (veya Cmd+C) tuşlarına basarak kopyalayın.');
+            }
+        }
+
+        // Hızlı URL kopyalama
+        function copyUrl(button) {
+            const url = document.getElementById('quickTrackingUrl').textContent;
+            copyToClipboard(url, button);
+        }
+
+        // HTML kod kopyalama
+        function copyCode(elementId) {
+            const input = document.getElementById(elementId);
+            input.select();
+
+            try {
+                document.execCommand('copy');
+                const button = input.nextElementSibling;
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check2 me-1"></i>Kopyalandı';
+                button.disabled = true;
+
+                setTimeout(() => {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Kopyalama hatası:', err);
+                alert('Otomatik kopyalama başarısız oldu. Lütfen metni seçip Ctrl+C (veya Cmd+C) tuşlarına basarak kopyalayın.');
+            }
+        }
+
+        // Tracking kodunu göster
+        function showTrackingCode(prefix) {
+            const baseUrl = window.location.href.split('?')[0];
+            const trackingId = prefix + Date.now().toString(16);
+            const trackingUrl = baseUrl + '?track=' + trackingId;
+
+            // Görünmez piksel kodu
+            document.getElementById('invisibleCode').value =
+                `<img src="${trackingUrl}" width="1" height="1" style="display:none">`;
+
+            // Görünür logo kodu
+            document.getElementById('visibleCode').value =
+                `<img src="${trackingUrl}" width="150" alt="Logo">`;
+
+            new bootstrap.Modal(document.getElementById('trackingLinkModal')).show();
+        }
+
+        // Hızlı tracking URL oluştur
+        function generateNewTrackingUrl() {
+            const trackingId = 'quick_' + Date.now().toString(16);
+            const baseUrl = window.location.href.split('?')[0];
+            const trackingUrl = baseUrl + '?track=' + trackingId;
+            document.getElementById('quickTrackingUrl').textContent = trackingUrl;
         }
 
         // Harita başlatma
@@ -476,35 +564,6 @@ if (isset($_GET['api'])) {
             // Hata durumunda haritada nokta gösterme
         }
         ?>
-
-        // Tracking kodunu göster
-        function showTrackingCode(prefix) {
-            const baseUrl = window.location.href.split('?')[0];
-            const trackingId = prefix + Date.now().toString(16);
-            const trackingUrl = baseUrl + '?track=' + trackingId;
-
-            // Görünmez piksel kodu
-            document.getElementById('invisibleCode').textContent =
-                `<img src="${trackingUrl}" width="1" height="1" style="display:none">`;
-
-            // Görünür logo kodu
-            document.getElementById('visibleCode').textContent =
-                `<img src="${trackingUrl}" width="150" alt="Logo">`;
-
-            new bootstrap.Modal(document.getElementById('trackingLinkModal')).show();
-        }
-
-        // Kodu kopyala
-        function copyCode(elementId) {
-            const code = document.getElementById(elementId).textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                const button = document.querySelector(`#${elementId}`).nextElementSibling;
-                button.innerHTML = '<i class="bi bi-check2 me-1"></i>Kopyalandı';
-                setTimeout(() => {
-                    button.innerHTML = '<i class="bi bi-clipboard me-1"></i>Kopyala';
-                }, 2000);
-            });
-        }
 
         // Kampanya listesini yükle
         function loadCampaigns() {
@@ -665,14 +724,6 @@ if (isset($_GET['api'])) {
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
-        }
-
-        // Hızlı tracking URL oluştur
-        function generateNewTrackingUrl() {
-            const trackingId = 'quick_' + Date.now().toString(16);
-            const baseUrl = window.location.href.split('?')[0];
-            const trackingUrl = baseUrl + '?track=' + trackingId;
-            document.getElementById('quickTrackingUrl').textContent = trackingUrl;
         }
 
         // Sayfa yüklendiğinde ilk URL'i oluştur
