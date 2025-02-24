@@ -119,11 +119,6 @@ if (isset($_GET['api'])) {
     }
 
     switch ($_GET['api']) {
-        case 'templates':
-            $stmt = $pdo->query("SELECT * FROM email_templates ORDER BY created_at DESC");
-            echo json_encode($stmt->fetchAll());
-            break;
-
         case 'campaigns':
             $stmt = $pdo->query("SELECT * FROM campaigns ORDER BY created_at DESC");
             echo json_encode($stmt->fetchAll());
@@ -215,29 +210,6 @@ if (isset($_GET['api'])) {
         <?php if (checkPermission('editor')): ?>
             <!-- Şablonlar ve Kampanyalar -->
             <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">
-                                <i class="bi bi-file-earmark-text me-2"></i>E-posta Şablonları
-                            </h5>
-                            <div class="list-group">
-                                <?php
-                                $stmt = $pdo->query("SELECT * FROM email_templates WHERE is_active = 1 ORDER BY created_at DESC LIMIT 5");
-                                while ($template = $stmt->fetch()) {
-                                    echo '<a href="#" class="list-group-item list-group-item-action template-card">';
-                                    echo '<div class="d-flex w-100 justify-content-between">';
-                                    echo '<h6 class="mb-1">' . htmlspecialchars($template['name']) . '</h6>';
-                                    echo '<small class="text-muted">' . htmlspecialchars($template['category']) . '</small>';
-                                    echo '</div>';
-                                    echo '<small class="text-muted">' . htmlspecialchars($template['description']) . '</small>';
-                                    echo '</a>';
-                                }
-                                ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">

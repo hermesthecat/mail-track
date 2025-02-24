@@ -116,10 +116,6 @@ body {
     margin-top: 20px;
 }
 
-.template-card {
-    cursor: pointer;
-}
-
 .campaign-status {
     width: 10px;
     height: 10px;

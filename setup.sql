@@ -30,19 +30,6 @@ CREATE TABLE IF NOT EXISTS email_logs (
     opened_at DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
--- E-posta şablonları tablosu
-CREATE TABLE IF NOT EXISTS email_templates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    html_content TEXT NOT NULL,
-    category VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES admins(id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 -- Kampanya takibi tablosu
 CREATE TABLE IF NOT EXISTS campaigns (
     id INT AUTO_INCREMENT PRIMARY KEY,
