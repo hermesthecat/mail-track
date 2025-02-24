@@ -201,19 +201,20 @@ body {
     width: 100%;
     margin: 0;
     padding: 0;
+    transition: all 0.3s ease;
 }
 
 #campaignsTable_wrapper .table-responsive {
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
+    overflow-x: auto;
 }
 
 #campaignsTable {
     width: 100% !important;
     margin: 0 !important;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 /* Sütun genişlikleri */
@@ -222,43 +223,44 @@ body {
     white-space: normal;
     word-wrap: break-word;
     padding: 12px 8px;
+    min-width: 100px;
 }
 
 /* Sütun genişlik ayarları */
 #campaignsTable th:nth-child(1),
-/* Kampanya Adı */
 #campaignsTable td:nth-child(1) {
-    width: 20%;
+    width: auto;
+    min-width: 150px;
 }
 
 #campaignsTable th:nth-child(2),
-/* Açıklama */
 #campaignsTable td:nth-child(2) {
-    width: 30%;
+    width: auto;
+    min-width: 200px;
 }
 
 #campaignsTable th:nth-child(3),
-/* Takip Kodu */
 #campaignsTable td:nth-child(3) {
-    width: 15%;
+    width: auto;
+    min-width: 120px;
 }
 
 #campaignsTable th:nth-child(4),
-/* Açılma */
 #campaignsTable td:nth-child(4) {
-    width: 10%;
+    width: auto;
+    min-width: 100px;
 }
 
 #campaignsTable th:nth-child(5),
-/* Oluşturan/Tarih */
 #campaignsTable td:nth-child(5) {
-    width: 15%;
+    width: auto;
+    min-width: 150px;
 }
 
 #campaignsTable th:nth-child(6),
-/* İşlemler */
 #campaignsTable td:nth-child(6) {
-    width: 10%;
+    width: auto;
+    min-width: 100px;
     text-align: center;
 }
 

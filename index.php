@@ -764,7 +764,7 @@ if (isset($_GET['api'])) {
 
         // DataTables başlat
         $(document).ready(function() {
-            $('#campaignsTable').DataTable({
+            const campaignsTable = $('#campaignsTable').DataTable({
                 processing: true,
                 serverSide: true,
                 ajax: '?api=campaigns',
@@ -775,6 +775,8 @@ if (isset($_GET['api'])) {
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
+                responsive: true,
+                autoWidth: true,
                 columns: [{
                         data: 0
                     }, // Kampanya Adı
@@ -795,6 +797,15 @@ if (isset($_GET['api'])) {
                         orderable: false
                     } // İşlemler
                 ]
+            });
+
+            // Pencere boyutu değiştiğinde tabloyu yeniden hesapla
+            let resizeTimer;
+            $(window).on('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    campaignsTable.columns.adjust().responsive.recalc();
+                }, 250);
             });
         });
 
