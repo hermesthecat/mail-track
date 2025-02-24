@@ -156,7 +156,7 @@ if (isset($_GET['api'])) {
                 $stmt = $pdo->prepare("SELECT * FROM campaigns WHERE id = ?");
                 $stmt->execute([$_GET['id']]);
                 $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($campaign) {
                     echo json_encode($campaign);
                 } else {
@@ -170,7 +170,7 @@ if (isset($_GET['api'])) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $data = json_decode(file_get_contents('php://input'), true);
-                    
+
                     $stmt = $pdo->prepare("
                         INSERT INTO campaigns (name, description, tracking_prefix, created_by)
                         VALUES (?, ?, ?, ?)
@@ -271,7 +271,7 @@ if (isset($_GET['api'])) {
             $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
             $length = isset($_GET['length']) ? intval($_GET['length']) : 10;
             $search = isset($_GET['search']['value']) ? $_GET['search']['value'] : '';
-            
+
             // Arama koşulu
             $searchCondition = "";
             $params = [];
@@ -312,7 +312,7 @@ if (isset($_GET['api'])) {
             if ($search) $stmt->execute($params);
             else $stmt->execute();
             $data = [];
-            
+
             while ($row = $stmt->fetch()) {
                 $data[] = [
                     "<span class='badge bg-primary'>" . htmlspecialchars($row['tracking_id']) . "</span>",
@@ -696,17 +696,31 @@ if (isset($_GET['api'])) {
                 serverSide: true,
                 ajax: '?api=campaigns',
                 pageLength: 25,
-                order: [[4, 'desc']], // Oluşturma tarihine göre sırala
+                order: [
+                    [4, 'desc']
+                ], // Oluşturma tarihine göre sırala
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
-                columns: [
-                    { data: 0 }, // Kampanya Adı
-                    { data: 1 }, // Açıklama
-                    { data: 2 }, // Takip Kodu
-                    { data: 3 }, // Açılma
-                    { data: 4 }, // Oluşturan / Tarih
-                    { data: 5, orderable: false } // İşlemler
+                columns: [{
+                        data: 0
+                    }, // Kampanya Adı
+                    {
+                        data: 1
+                    }, // Açıklama
+                    {
+                        data: 2
+                    }, // Takip Kodu
+                    {
+                        data: 3
+                    }, // Açılma
+                    {
+                        data: 4
+                    }, // Oluşturan / Tarih
+                    {
+                        data: 5,
+                        orderable: false
+                    } // İşlemler
                 ]
             });
         });
@@ -734,25 +748,25 @@ if (isset($_GET['api'])) {
             if (id) data.id = id;
 
             fetch('?api=campaigns' + (id ? '&id=' + id : ''), {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
-                    refreshCampaignsTable();
-                    showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
-                } else if (result.error) {
-                    showError(result.error);
-                }
-            })
-            .catch(error => {
-                showError('Bir hata oluştu: ' + error.message);
-            });
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+                        refreshCampaignsTable();
+                        showSuccess('Kampanya başarıyla ' + (id ? 'güncellendi' : 'oluşturuldu') + '.');
+                    } else if (result.error) {
+                        showError(result.error);
+                    }
+                })
+                .catch(error => {
+                    showError('Bir hata oluştu: ' + error.message);
+                });
         }
 
         // Hata mesajı göster
@@ -815,35 +829,16 @@ if (isset($_GET['api'])) {
         function deleteCampaign(id) {
             if (confirm('Bu kampanyayı silmek istediğinizden emin misiniz?')) {
                 fetch('?api=campaigns&id=' + id, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        refreshCampaignsTable();
-                        showSuccess('Kampanya başarıyla silindi.');
-                    }
-                });
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            refreshCampaignsTable();
+                            showSuccess('Kampanya başarıyla silindi.');
+                        }
+                    });
             }
-        }
-
-        // Yardımcı fonksiyonlar
-        function getStatus(startDate, endDate) {
-            const now = new Date();
-            const start = new Date(startDate);
-            const end = endDate ? new Date(endDate) : null;
-
-            if (now < start) return 'scheduled';
-            if (!end || now <= end) return 'active';
-            return 'ended';
-        }
-
-        function getStatusText(status) {
-            return {
-                'scheduled': 'Planlandı',
-                'active': 'Aktif',
-                'ended': 'Bitti'
-            } [status];
         }
 
         function formatDate(date) {
@@ -872,17 +867,30 @@ if (isset($_GET['api'])) {
                 serverSide: true,
                 ajax: '?api=logs',
                 pageLength: 25,
-                order: [[5, 'desc']], // Açılma zamanına göre sırala
+                order: [
+                    [5, 'desc']
+                ], // Açılma zamanına göre sırala
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json'
                 },
-                columns: [
-                    { data: 0 }, // Takip Kodu
-                    { data: 1 }, // Kampanya
-                    { data: 2 }, // IP Adresi
-                    { data: 3 }, // Konum
-                    { data: 4 }, // Tarayıcı
-                    { data: 5 }  // Açılma Zamanı
+                columns: [{
+                        data: 0
+                    }, // Takip Kodu
+                    {
+                        data: 1
+                    }, // Kampanya
+                    {
+                        data: 2
+                    }, // IP Adresi
+                    {
+                        data: 3
+                    }, // Konum
+                    {
+                        data: 4
+                    }, // Tarayıcı
+                    {
+                        data: 5
+                    } // Açılma Zamanı
                 ]
             });
         });
